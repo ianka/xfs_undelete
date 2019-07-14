@@ -13,12 +13,11 @@ It also remounts the filesystem read-only on startup so you don’t accidentally
 However, I don’t offer any warranty or liability. **Use at your own risk.**
 
 ## Prerequisites
-*xfs_undelete* is a tiny Tcl script so it needs a Tcl interpreter. It makes use of some features of Tcl-8.6, so you need at least that version.
-In addition, it needs the *xfs_db* tool from the *xfstools* package, and a version of *dd* which supports the *bs=*, *skip=*, *seek=*, and *count=* options.
-That one from from GNU core utilities will do. In short:
+*xfs_undelete* is a tiny Tcl script so it needs a Tcl interpreter. It makes use of some features of Tcl-8.6, so you need at least that version. The *tcllib* package is used for parsing the command line. In addition, it needs the *xfs_db* tool from the *xfsprogs* package, and a version of *dd* which supports the *bs=*, *skip=*, *seek=*, and *count=* options. That one from from GNU core utilities will do. In short:
 
-- Tcl >= 8.6
-- xfstools
+- tcl >= 8.6
+- tcllib
+- xfsprogs
 - GNU coreutils
 
 In addition, you need enough space on another filesystem to store all the recovered files as they cannot be recovered in place.
@@ -49,4 +48,4 @@ Once you found all the files you lost and want to put them in them place again, 
 ## License
 *xfs_undelete* is free software, written and copyrighted by
 Jan Kandziora <jjj@gmx.de>. You may use, distribute and modify it under the
-terms of the attached GPLv3 license. See the file COPYING for details.
+terms of the attached GPLv3 license. See the file LICENSE for details.
