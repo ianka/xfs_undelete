@@ -97,8 +97,8 @@ for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
 				## Ignore extents beyond the filesystem.
 				if {($skip+$count)>=$dblocks} continue
 
-				## Recover the data from this extent.
-				exec -ignorestderr -- dd 2>/dev/null if=$fs of=$of bs=$blocksize skip=$skip seek=$loffset count=$count
+				## Recover the data from this extent. Ignore extents for which dd reported a problem.
+				if {[catch {exec -ignorestderr -- dd if=$fs of=$of bs=$blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}]} continue
 
 				## Remember there was at least one recovered extent.
 				set recovered 1
