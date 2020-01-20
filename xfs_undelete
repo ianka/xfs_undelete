@@ -73,58 +73,58 @@ for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
 
 	## Run through all potential inodes in a block.
 	for {set boffset 0} {$boffset<$blocksize} {incr boffset $inodesize} {
-		## Check for the magic string of an unused/deleted inode.
-		if {[string range $data $boffset $boffset+7] eq "IN\0\0\3\2\0\0"} {
-			## Found. Get inode number.
-			binary scan [string range $data $boffset+152 $boffset+159] W inode
+		## Skip if not the magic string of an unused/deleted inode.
+		if {[string range $data $boffset $boffset+7] ne "IN\0\0\3\2\0\0"} continue
 
-			## Get ctime.
-			binary scan [string range $data $boffset+48 $boffset+51] I ctime
+		## Found. Get inode number.
+		binary scan [string range $data $boffset+152 $boffset+159] W inode
 
-			## Ignore files deleted before the specified time.
-			if {$ctime<$mctime} {
-				puts stderr "\nInode $inode was deleted [clock format $ctime], earlier than [clock format $mctime]. Ignored."
-				continue
-			}
+		## Get ctime.
+		binary scan [string range $data $boffset+48 $boffset+51] I ctime
 
-			## Get output filename.
-			set of [file join [dict get $::parameters o] $inode]
+		## Ignore files deleted before the specified time.
+		if {$ctime<$mctime} {
+			puts stderr "\nInode $inode was deleted [clock format $ctime], earlier than [clock format $mctime]. Ignored."
+			continue
+		}
 
-			## Recover any extents found.
-			set recovered 0
-			for {set ioffset 176} {$ioffset<$inodesize} {incr ioffset 16} {
-				## Get extent.
-				set extent [string range $data $boffset+$ioffset [expr {$boffset+$ioffset+15}]]
+		## Get output filename.
+		set of [file join [dict get $::parameters o] $inode]
 
-				## Ignore unused extents.
-				if {$extent eq "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"} continue
+		## Recover any extents found.
+		set recovered 0
+		for {set ioffset 176} {$ioffset<$inodesize} {incr ioffset 16} {
+			## Get extent.
+			set extent [string range $data $boffset+$ioffset [expr {$boffset+$ioffset+15}]]
 
-				## Get data blocks from extent.
-				binary scan $extent B* extbits
-				set flag    [expr 0b[string index $extbits 0]]
-				set loffset [expr 0b[string range $extbits 1 54]]
-				set ag      [expr 0b[string range $extbits 55 106-$agblklog]]
-				set ablock  [expr 0b[string range $extbits 107-$agblklog 106]]
-				set count   [expr 0b[string range $extbits 107 127]]
-				set skip    [expr {$ag*$agblocks+$ablock}]
+			## Ignore unused extents.
+			if {$extent eq "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"} continue
 
-				## Ignore preallocated, unwritten extents.
-				if {$flag} continue
+			## Get data blocks from extent.
+			binary scan $extent B* extbits
+			set flag    [expr 0b[string index $extbits 0]]
+			set loffset [expr 0b[string range $extbits 1 54]]
+			set ag      [expr 0b[string range $extbits 55 106-$agblklog]]
+			set ablock  [expr 0b[string range $extbits 107-$agblklog 106]]
+			set count   [expr 0b[string range $extbits 107 127]]
+			set skip    [expr {$ag*$agblocks+$ablock}]
 
-				## Ignore extents beyond the filesystem.
-				if {($skip+$count)>=$dblocks} continue
+			## Ignore preallocated, unwritten extents.
+			if {$flag} continue
 
-				## Recover the data from this extent. Ignore extents for which dd reported a problem.
-				if {[catch {exec -ignorestderr -- dd if=$fs of=$of bs=$blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}]} continue
+			## Ignore extents beyond the filesystem.
+			if {($skip+$count)>=$dblocks} continue
 
-				## Remember there was at least one recovered extent.
-				set recovered 1
-			}
+			## Recover the data from this extent. Ignore extents for which dd reported a problem.
+			if {[catch {exec -ignorestderr -- dd if=$fs of=$of bs=$blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}]} continue
 
-			## Log if we had at least one recovered extent.
-			if {$recovered} {
-				puts stderr "\nRecovered deleted inode $inode."
-			}
+			## Remember there was at least one recovered extent.
+			set recovered 1
+		}
+
+		## Log if we had at least one recovered extent.
+		if {$recovered} {
+			puts stderr "\nRecovered deleted inode $inode."
 		}
 	}
 }
