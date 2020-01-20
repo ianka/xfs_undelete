@@ -13,6 +13,7 @@ package require cmdline
 if {[catch {set parameters [cmdline::getoptions argv {
 	{o.arg xfs_undeleted "target directory for recovered files"}
 	{s.arg 0 "start block"}
+	{t.arg "" "deleted since"}
 } {[options] -- options are:}]} result]} {
 	puts stderr $result
 	exit 127
@@ -20,6 +21,13 @@ if {[catch {set parameters [cmdline::getoptions argv {
 
 ## Get filesystem to scan from command line.
 set fs [lindex $argv 0]
+
+## Get the minimum ctime to consider.
+if {[dict get $::parameters t] ne {}} {
+	set mctime [clock scan [dict get $::parameters t]]
+} else {
+	set mctime 0
+}
 
 ## Remount the target filesystem read-only if mounted.
 catch {exec -ignorestderr -- mount 2>/dev/null -oremount,ro $fs}
@@ -69,6 +77,15 @@ for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
 		if {[string range $data $boffset $boffset+7] eq "IN\0\0\3\2\0\0"} {
 			## Found. Get inode number.
 			binary scan [string range $data $boffset+152 $boffset+159] W inode
+
+			## Get ctime.
+			binary scan [string range $data $boffset+48 $boffset+51] I ctime
+
+			## Ignore files deleted before the specified time.
+			if {$ctime<$mctime} {
+				puts stderr "\nInode $inode was deleted [clock format $ctime], earlier than [clock format $mctime]. Ignored."
+				continue
+			}
 
 			## Get output filename.
 			set of [file join [dict get $::parameters o] $inode]

@@ -23,7 +23,7 @@ However, I don’t offer any warranty or liability. **Use at your own risk.**
 In addition, you need enough space on another filesystem to store all the recovered files as they cannot be recovered in place.
 
 ## Limitations
-- The way XFS deletes files makes it impossible to recover the filename or the path. Especially, it’s all or nothing. You cannot undelete only certain files.
+- The way XFS deletes files makes it impossible to recover the filename or the path. You cannot undelete only certain files. The tool however has a mechanism only to recover files deleted since a certain date. See the -t option.
 - The way XFS deletes files makes it impossible to recover heavily fragmented files. For typical 512 byte inodes, you can only recover files having at maximum 21 extents (of arbitrary size). Files with more extents cannot be recovered at all by this program.
 - It's rather slow. Expect 2 GB scanned per minute. I don’t do this often enough to see a problem.
 
@@ -41,6 +41,15 @@ This stores the recovered files from */dev/sda3* in the directory */mnt/external
 	# xfs_undelete -s 1234567890 /dev/sda3
 
 This starts recovery with filesystem block *1234567890*. You can resume an aborted recovery this way.
+
+	# xfs_undelete -t 2020-01-01 /dev/sda3
+
+This ignores files deleted before Jan 1st, 2020.
+
+	# xfs_undelete -t -1week /dev/sda3
+
+This ignores files deleted more than one week ago. The -t option accepts all dates understood by Tcl’s [clock scan] command.
+
 
 Please remember *xfs_undelete* remounts the source filesystem read-only.
 Once you found all the files you lost and want to put them in them place again, you have to remount it read-write by yourself.
