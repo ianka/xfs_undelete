@@ -1,4 +1,4 @@
-#!/usr/bin/tclsh
+#!/usr/bin/env tclsh
 ##
 ## Copyright (c) 2019 Jan Kandziora <jjj@gmx.de>
 ##
