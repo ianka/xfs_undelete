@@ -112,8 +112,11 @@ for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
 			## Ignore preallocated, unwritten extents.
 			if {$flag} continue
 
-			## Ignore extents beyond the filesystem.
+			## Silently ignore extents beyond the filesystem. These are clearly bogus.
 			if {($skip+$count)>=$dblocks} continue
+
+			## Silently ignore extents even a 64-bit dd cannot handle. These are most likely bogus.
+			if {($blocksize*$loffset)>=(2**63-1)} continue
 
 			## Recover the data from this extent. Ignore extents for which dd reported a problem.
 			if {[catch {exec -ignorestderr -- dd if=$fs of=$of bs=$blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}]} continue
