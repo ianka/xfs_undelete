@@ -37,25 +37,26 @@ file mkdir [dict get $::parameters o]
 
 ## Defaults.
 set blocksize 4096
-set inodesize  512
-set agblocks  1024
-set agblklog    10
 set dblocks   4096
-
-## Get real xfs configuration from filesytem.
-if {[catch {exec -ignorestderr -- xfs_db -r -c "sb 0" -c "p" $fs} config]} {
-	exit 1
-}
-foreach line [split $config \n] {
-	lassign $line key dummy value
-	if {$key in {blocksize inodesize agblocks agblklog dblocks}} {
-		set $key $value
-	}
-}
+set agblocks  1024
+set sectsize   512
+set inodesize  512
+set agblklog    10
 
 ## Open filesystem image for binary reading.
 set fd [open $fs r]
 fconfigure $fd -translation binary
+
+## Read first superblock.
+set data [read $fd $sectsize]
+
+## Get real xfs configuration from filesytem superblock.
+binary scan [string range $data   4   7] I blocksize
+binary scan [string range $data   8  15] W dblocks
+binary scan [string range $data  84  87] I agblocks
+binary scan [string range $data 102 103] S sectsize
+binary scan [string range $data 104 105] S inodesize
+binary scan [string index $data     124] c agblklog
 
 ## Seek to start block.
 seek $fd [expr {$blocksize*[dict get $::parameters s]}]

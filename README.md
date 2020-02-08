@@ -3,7 +3,7 @@ An undelete tool for the XFS filesystem.
 
 ## What does it?
 *xfs_undelete* tries to recover all inodes on an XFS filesystem marked as deleted.
-It's rather dumb, it just looks for the magic string *IN\0\0\3\2\0\0* and considers those as deleted inodes.
+It's rather dumb, it just looks for the magic string *IN\0\0\3\2\0\0* in all filesystem blocks and considers those records as deleted inodes.
 Then, it tries to make sense of the extents stored in the inode (which XFS does not delete) and collect the data blocks of the file.
 That file is then stored on another filesystem in a subdirectory, by default *xfs_undeleted* relative to the current directory.
 
@@ -13,11 +13,10 @@ It also remounts the filesystem read-only on startup so you don’t accidentally
 However, I don’t offer any warranty or liability. **Use at your own risk.**
 
 ## Prerequisites
-*xfs_undelete* is a tiny Tcl script so it needs a Tcl interpreter. It makes use of some features of Tcl-8.6, so you need at least that version. The *tcllib* package is used for parsing the command line. In addition, it needs the *xfs_db* tool from the *xfsprogs* package, and a version of *dd* which supports the *bs=*, *skip=*, *seek=*, and *count=* options. That one from from GNU core utilities will do. In short:
+*xfs_undelete* is a tiny Tcl script so it needs a Tcl interpreter. It makes use of some features of Tcl-8.6, so you need at least that version. The *tcllib* package is used for parsing the command line. In addition, it needs a version of *dd* which supports the *bs=*, *skip=*, *seek=*, *count=*, *conv=notrunc*, and *status=none* options. That one from from GNU core utilities will do. In short:
 
 - tcl >= 8.6
 - tcllib
-- xfsprogs
 - GNU coreutils
 
 In addition, you need enough space on another filesystem to store all the recovered files as they cannot be recovered in place.
