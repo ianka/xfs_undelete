@@ -12,7 +12,6 @@ package require cmdline
 ## Parse command line options.
 if {[catch {set parameters [cmdline::getoptions argv {
 	{o.arg xfs_undeleted "target directory for recovered files"}
-	{s.arg 0 "start block"}
 	{t.arg "" "deleted since"}
 } {[options] -- options are:}]} result]} {
 	puts stderr $result
@@ -39,9 +38,15 @@ file mkdir [dict get $::parameters o]
 set blocksize 4096
 set dblocks   4096
 set agblocks  1024
+set agcount      4
 set sectsize   512
 set inodesize  512
+set inopblock    8
 set agblklog    10
+set icount       0
+
+## No inodes checked so far.
+set ichecked 0
 
 ## Open filesystem image for binary reading.
 set fd [open $fs r]
@@ -56,24 +61,30 @@ binary scan [string range $data   8  15] Wu dblocks
 binary scan [string range $data  84  87] Iu agblocks
 binary scan [string range $data 102 103] Su sectsize
 binary scan [string range $data 104 105] Su inodesize
+binary scan [string range $data 106 107] Su inopblock
 binary scan [string index $data     124] cu agblklog
+binary scan [string range $data 128 136] Wu icount
 
-## Seek to start block.
-seek $fd [expr {$blocksize*[dict get $::parameters s]}]
+## Set message formats.
+set cmformat "Checking  inode %[string length $dblocks]d (%5.1f%%)\r"
+set rmformat "Recovered inode %[string length $dblocks]d, deleted %s."
+set dmformat "Done.           %[string length $dblocks]s           "
 
-## Get message format.
-set m1format "Checking block %[string length $dblocks]d/%[string length $dblocks]d  (%5.1f%%)\r"
-
-## Run through whole filesystem.
-for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
-	## Log each visited block.
-	puts -nonewline stderr [format $m1format $block $dblocks [expr {100*$block/double($dblocks)}]]
+## Function: investigate inode block.
+proc investigateInodeBlock {ag block} {
+	## Calculate device block number.
+	set dblock [expr {$::agblocks*$ag+$block}]
 
 	## Read the block.
-	set data [read $fd $blocksize]
+	seek $::fd [expr {$::blocksize*$dblock}]
+	set data [read $::fd $::blocksize]
 
 	## Run through all potential inodes in a block.
-	for {set boffset 0} {$boffset<$blocksize} {incr boffset $inodesize} {
+	for {set boffset 0} {$boffset<$::blocksize} {incr boffset $::inodesize} {
+		## Log each visited inode.
+		puts -nonewline stderr [format $::cmformat [expr {$dblock/$::inopblock}] [expr {100*$::ichecked/double($::icount)}]]
+		incr ::ichecked
+
 		## Skip if not the magic string of an unused/deleted inode.
 		if {[string range $data $boffset $boffset+7] ne "IN\0\0\3\2\0\0"} continue
 
@@ -84,17 +95,14 @@ for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
 		binary scan [string range $data $boffset+48 $boffset+51] Iu ctime
 
 		## Ignore files deleted before the specified time.
-		if {$ctime<$mctime} {
-			puts stderr "\nInode $inode was deleted [clock format $ctime], earlier than [clock format $mctime]. Ignored."
-			continue
-		}
+		if {$ctime<$::mctime} continue
 
 		## Get output filename.
 		set of [file join [dict get $::parameters o] $inode]
 
 		## Recover any extents found.
 		set recovered 0
-		for {set ioffset 176} {$ioffset<$inodesize} {incr ioffset 16} {
+		for {set ioffset 176} {$ioffset<$::inodesize} {incr ioffset 16} {
 			## Get extent.
 			set extent [string range $data $boffset+$ioffset [expr {$boffset+$ioffset+15}]]
 
@@ -105,22 +113,22 @@ for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
 			binary scan $extent B* extbits
 			set flag    [expr 0b[string index $extbits 0]]
 			set loffset [expr 0b[string range $extbits 1 54]]
-			set ag      [expr 0b[string range $extbits 55 106-$agblklog]]
-			set ablock  [expr 0b[string range $extbits 107-$agblklog 106]]
+			set aag     [expr 0b[string range $extbits 55 106-$::agblklog]]
+			set ablock  [expr 0b[string range $extbits 107-$::agblklog 106]]
 			set count   [expr 0b[string range $extbits 107 127]]
-			set skip    [expr {$ag*$agblocks+$ablock}]
+			set skip    [expr {$aag*$::agblocks+$ablock}]
 
 			## Ignore preallocated, unwritten extents.
 			if {$flag} continue
 
 			## Silently ignore extents beyond the filesystem. These are clearly bogus.
-			if {($skip+$count)>=$dblocks} continue
+			if {($skip+$count)>=$::dblocks} continue
 
 			## Silently ignore extents even a 64-bit dd cannot handle. These are most likely bogus.
-			if {($blocksize*$loffset)>=(2**63-1)} continue
+			if {($::blocksize*$loffset)>=(2**63-1)} continue
 
 			## Recover the data from this extent. Ignore extents for which dd reported a problem.
-			if {[catch {exec -ignorestderr -- dd if=$fs of=$of bs=$blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}]} continue
+			if {[catch {exec -ignorestderr -- dd if=$::fs of=$of bs=$::blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}]} continue
 
 			## Remember there was at least one recovered extent.
 			set recovered 1
@@ -128,10 +136,70 @@ for {set block [dict get $::parameters s]} {$block<$dblocks} {incr block} {
 
 		## Log if we had at least one recovered extent.
 		if {$recovered} {
-			puts stderr "\nRecovered deleted inode $inode."
+			puts stderr [format $::rmformat $inode [clock format $ctime]]
 		}
 	}
 }
 
-## Done.
-puts stderr "\nDone."
+## Function: traverse through inode tree.
+proc traverseInodeTree {ag block} {
+	## Read inode tree block.
+	seek $::fd [expr {$::blocksize*($::agblocks*$ag+$block)}]
+	set data [read $::fd $::blocksize]
+
+	## Set record start index depending on inode btree magic.
+	## Ignore any tree of unknown format.
+	switch -- [string range $data 0 3] {
+		IABT {set index 16}
+		IAB3 {set index 56}
+		default return
+	}
+
+	## Get level and number of records.
+	binary scan [string range $data 4 5] Su bb_level
+	binary scan [string range $data 6 7] Su bb_numrecs
+
+	## Check if node or leaf.
+	if {$bb_level>0} {
+		## Node. Run through all pointer records.
+		for {set rec 0 ; set index [expr {($::blocksize+$index)/2}]} {$rec<$bb_numrecs} {incr rec ; incr index 4} {
+			## Get block number of branch.
+			binary scan [string range $data $index $index+3] Iu agi_branch
+
+			## Traverse through branch.
+			traverseInodeTree $ag $agi_branch
+		}
+	} else {
+		## Go through all leaf records.
+		for {set rec 0} {$rec<$bb_numrecs} {incr rec ; incr index 16} {
+			## Get start inode number.
+			binary scan [string range $data $index $index+3] Iu agi_start
+
+			## Run through all inode records.
+			for {set inode 0} {$inode<64} {incr inode $::inopblock} {
+				## Get block number.
+				set iblock [expr {($agi_start+$inode)/$::inopblock}]
+
+				## Investigate that block for deleted inodes.
+				investigateInodeBlock $ag $iblock
+			}
+		}
+	}
+}
+
+## Run through all allocation groups.
+for {set ag 0} {$ag<$agcount} {incr ag} {
+	## Read inode B+tree information sector of this allocation group.
+	seek $fd [expr {$blocksize*$agblocks*$ag+2*$sectsize}]
+	set data [read $fd $sectsize]
+
+	## Get allocation group inode root block and number of levels.
+	binary scan [string range $data 20 23] Iu agi_root
+	binary scan [string range $data 24 27] Iu agi_level
+
+	## Start traversal of this allocation group's inode B+Tree with root block.
+	traverseInodeTree $ag $agi_root
+}
+
+## Print completion messages.
+puts stderr [format $::dmformat {}]
