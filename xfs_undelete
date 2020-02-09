@@ -91,15 +91,18 @@ proc investigateInodeBlock {ag block} {
 
 	## Run through all potential inodes in a block.
 	for {set boffset 0} {$boffset<$::blocksize} {incr boffset $::inodesize} {
+		## Skip if not the magic string of an inode.
+		if {[string range $data $boffset $boffset+1] ne "IN"} continue
+
+		## Found. Get inode number.
+		binary scan [string range $data $boffset+152 $boffset+159] Wu inode
+
 		## Log each visited inode.
-		puts -nonewline stderr [format $::cmformat [expr {$dblock/$::inopblock}] [expr {100*$::ichecked/double($::icount)}]]
+		puts -nonewline stderr [format $::cmformat $inode [expr {100*$::ichecked/double($::icount)}]]
 		incr ::ichecked
 
 		## Skip if not the magic string of an unused/deleted inode.
 		if {[string range $data $boffset $boffset+7] ne "IN\0\0\3\2\0\0"} continue
-
-		## Found. Get inode number.
-		binary scan [string range $data $boffset+152 $boffset+159] Wu inode
 
 		## Get ctime.
 		binary scan [string range $data $boffset+48 $boffset+51] Iu ctime
