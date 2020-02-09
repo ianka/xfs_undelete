@@ -29,7 +29,17 @@ if {[dict get $::parameters t] ne {}} {
 }
 
 ## Remount the target filesystem read-only if mounted.
-catch {exec -ignorestderr -- mount 2>/dev/null -oremount,ro $fs}
+set env(LANG) C
+if {[catch {exec -- mount -oremount,ro $fs} err]} {
+	## No error if not mounted.
+	switch -glob -- $err {
+		"* mount point not mounted or bad option." {}
+		default {
+			puts stderr $err
+			exit 32
+		}
+	}
+}
 
 ## Create lost+found directory if nonexistent.
 file mkdir [dict get $::parameters o]
