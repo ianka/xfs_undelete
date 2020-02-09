@@ -44,6 +44,12 @@ if {[catch {exec -- mount -oremount,ro $fs} err]} {
 ## Create lost+found directory if nonexistent.
 file mkdir [dict get $::parameters o]
 
+## Hard coded mimetype to extension mappings.
+set mimetypes [dict create {*}{
+	application/octet-stream  bin
+	text/plain                txt
+}]
+
 ## Defaults.
 set blocksize 4096
 set dblocks   4096
@@ -77,7 +83,7 @@ binary scan [string range $data 128 136] Wu icount
 
 ## Set message formats.
 set cmformat "Checking  inode %[string length $dblocks]d (%5.1f%%)\r"
-set rmformat "Recovered inode %[string length $dblocks]d, deleted %s."
+set rmformat "Recovered file -> %s"
 set dmformat "Done.           %[string length $dblocks]s           "
 
 ## Function: investigate inode block.
@@ -111,7 +117,7 @@ proc investigateInodeBlock {ag block} {
 		if {$ctime<$::mctime} continue
 
 		## Get output filename.
-		set of [file join [dict get $::parameters o] $inode]
+		set of [file join [dict get $::parameters o] [format "%s_%s" [clock format $ctime -format "%Y-%m-%d-%H:%M"] $inode]]
 
 		## Recover any extents found.
 		set recovered 0
@@ -147,9 +153,31 @@ proc investigateInodeBlock {ag block} {
 			set recovered 1
 		}
 
-		## Log if we had at least one recovered extent.
+		## Check if we had at least one recovered extent.
 		if {$recovered} {
-			puts stderr [format $::rmformat $inode [clock format $ctime]]
+			## Reconstruct file extension from file content.
+			if {![catch {exec -ignorestderr -- file --brief --mime-type $of} mimetype]} {
+				## No error. Guess extension from mimetype.
+				## This hack is neccessary because most magic files found in the wild have
+				## very poor support for file extensions. Mime type support is usually good.
+				if {[dict exists $::mimetypes $mimetype]} {
+					set extension [dict get $::mimetypes $mimetype]
+				} elseif {[regexp {^.*?/([[:alnum:]]*[-.])?(.*?)(\+.*)?$} $mimetype match ldummy extension rdummy]} {
+					set extension [string tolower $extension]
+				} else {
+					set extension "bin"
+				}
+
+				## Rename the recovered file.
+				set rof [format "%s.%s" $of $extension]
+				file rename -force $of $rof
+			} else {
+				## No renaming of the recovered file.
+				set rof $of
+			}
+
+			## Log.
+			puts stderr [format $::rmformat $rof]
 		}
 	}
 }
