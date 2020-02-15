@@ -119,8 +119,8 @@ proc investigateInodeBlock {ag block} {
 		## Get output filename.
 		set of [file join [dict get $::parameters o] [format "%s_%s" [clock format $ctime -format "%Y-%m-%d-%H:%M"] $inode]]
 
-		## Recover any extents found.
-		set recovered 0
+		## Make a dict of any extents found.
+		set extents [dict create]
 		for {set ioffset 176} {$ioffset<$::inodesize} {incr ioffset 16} {
 			## Get extent.
 			set extent [string range $data $boffset+$ioffset [expr {$boffset+$ioffset+15}]]
@@ -130,15 +130,16 @@ proc investigateInodeBlock {ag block} {
 
 			## Get data blocks from extent.
 			binary scan $extent B* extbits
-			set flag    [expr 0b[string index $extbits 0]]
+
+			## Ignore preallocated, unwritten extents.
+			if {[string index $extbits 0]} continue
+
+			## Get extent information.
 			set loffset [expr 0b[string range $extbits 1 54]]
 			set aag     [expr 0b[string range $extbits 55 106-$::agblklog]]
 			set ablock  [expr 0b[string range $extbits 107-$::agblklog 106]]
 			set count   [expr 0b[string range $extbits 107 127]]
 			set skip    [expr {$aag*$::agblocks+$ablock}]
-
-			## Ignore preallocated, unwritten extents.
-			if {$flag} continue
 
 			## Silently ignore extents beyond the filesystem. These are clearly bogus.
 			if {($skip+$count)>=$::dblocks} continue
@@ -146,39 +147,47 @@ proc investigateInodeBlock {ag block} {
 			## Silently ignore extents even a 64-bit dd cannot handle. These are most likely bogus.
 			if {($::blocksize*$loffset)>=(2**63-1)} continue
 
-			## Recover the data from this extent. Ignore extents for which dd reported a problem.
-			if {[catch {exec -ignorestderr -- dd if=$::fs of=$of bs=$::blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}]} continue
-
-			## Remember there was at least one recovered extent.
-			set recovered 1
+			## Set up extent record.
+			dict set extents $loffset [dict create skip $skip count $count]
 		}
 
-		## Check if we had at least one recovered extent.
-		if {$recovered} {
-			## Reconstruct file extension from file content.
-			if {![catch {exec -ignorestderr -- file --brief --mime-type $of} mimetype]} {
-				## No error. Guess extension from mimetype.
-				## This hack is neccessary because most magic files found in the wild have
-				## very poor support for file extensions. Mime type support is usually good.
-				if {[dict exists $::mimetypes $mimetype]} {
-					set extension [dict get $::mimetypes $mimetype]
-				} elseif {[regexp {^.*?/([[:alnum:]]*[-.])?(.*?)(\+.*)?$} $mimetype match ldummy extension rdummy]} {
-					set extension [string tolower $extension]
-				} else {
-					set extension "bin"
-				}
+		## Ignore all files without valid extents.
+		if {$extents eq {}} continue
 
-				## Rename the recovered file.
-				set rof [format "%s.%s" $of $extension]
-				file rename -force $of $rof
+		## Ignore all files without any extent starting at loffset zero. These are most likely bogus.
+		if {![dict exist $extents 0]} continue
+
+		## Recover all extents.
+		dict for {loffset inf} $extents {
+			dict with inf {
+				## Recover the data from this extent. Ignore extents for which dd reported a problem.
+				catch {exec -ignorestderr -- dd if=$::fs of=$of bs=$::blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}
+			}
+		}
+
+		## Reconstruct file extension from file content.
+		if {![catch {exec -ignorestderr -- file --brief --mime-type $of} mimetype]} {
+			## No error. Guess extension from mimetype.
+			## This hack is neccessary because most magic files found in the wild have
+			## very poor support for file extensions. Mime type support is usually good.
+			if {[dict exists $::mimetypes $mimetype]} {
+				set extension [dict get $::mimetypes $mimetype]
+			} elseif {[regexp {^.*?/([[:alnum:]]*[-.])?(.*?)(\+.*)?$} $mimetype match ldummy extension rdummy]} {
+				set extension [string tolower $extension]
 			} else {
-				## No renaming of the recovered file.
-				set rof $of
+				set extension "bin"
 			}
 
-			## Log.
-			puts stderr [format $::rmformat $rof]
+			## Rename the recovered file.
+			set rof [format "%s.%s" $of $extension]
+			file rename -force $of $rof
+		} else {
+			## No renaming of the recovered file.
+			set rof $of
 		}
+
+		## Log.
+		puts stderr [format $::rmformat $rof]
 	}
 }
 
