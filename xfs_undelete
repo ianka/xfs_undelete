@@ -234,9 +234,8 @@ for {set ag 0} {$ag<$agcount} {incr ag} {
 	seek $fd [expr {$blocksize*$agblocks*$ag+2*$sectsize}]
 	set data [read $fd $sectsize]
 
-	## Get allocation group inode root block and number of levels.
+	## Get allocation group inode root block.
 	binary scan [string range $data 20 23] Iu agi_root
-	binary scan [string range $data 24 27] Iu agi_level
 
 	## Start traversal of this allocation group's inode B+Tree with root block.
 	traverseInodeTree $ag $agi_root
