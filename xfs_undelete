@@ -11,7 +11,9 @@ package require cmdline
 
 ## Parse command line options.
 if {[catch {set parameters [cmdline::getoptions argv {
+	{i.arg "bin" "list of file extensions to ignore"}
 	{o.arg xfs_undeleted "target directory for recovered files"}
+	{r.arg "" "list of file extensions to recover"}
 	{t.arg "" "deleted since"}
 } {[options] -- options are:}]} result]} {
 	puts stderr $result
@@ -157,13 +159,8 @@ proc investigateInodeBlock {ag block} {
 		## Ignore all files without any extent starting at loffset zero. These are most likely bogus.
 		if {![dict exist $extents 0]} continue
 
-		## Recover all extents.
-		dict for {loffset inf} $extents {
-			dict with inf {
-				## Recover the data from this extent. Ignore extents for which dd reported a problem.
-				catch {exec -ignorestderr -- dd if=$::fs of=$of bs=$::blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}
-			}
-		}
+		## Recover first block of loffset zero extent for file type reconstruction. Ignore file if dd reported a problem.
+		if {[catch {exec -ignorestderr -- dd if=$::fs of=$of bs=$::blocksize skip=[dict get $extents 0 skip] seek=0 count=1 conv=notrunc status=none}]} continue
 
 		## Reconstruct file extension from file content.
 		if {![catch {exec -ignorestderr -- file --brief --mime-type $of} mimetype]} {
@@ -182,8 +179,31 @@ proc investigateInodeBlock {ag block} {
 			set rof [format "%s.%s" $of $extension]
 			file rename -force $of $rof
 		} else {
-			## No renaming of the recovered file.
+			## No extension.
+			set extension {}
+
+			## Error. No renaming of the recovered file.
 			set rof $of
+		}
+
+		## Ignore all files with extensions from the ignore list.
+		if {$extension in [dict get $::parameters i]} {
+			file delete -force $rof
+			continue
+		}
+
+		## Only recover those with extensions from the recover list.
+		if {[dict get $::parameters r] ne {} && $extension ni [dict get $::parameters r]} {
+			file delete -force $rof
+			continue
+		}
+
+		## Recover all extents.
+		dict for {loffset inf} $extents {
+			dict with inf {
+				## Recover the data from this extent. Ignore extents for which dd reported a problem.
+				catch {exec -ignorestderr -- dd if=$::fs of=$rof bs=$::blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}
+			}
 		}
 
 		## Log.
