@@ -84,9 +84,9 @@ binary scan [string index $data     124] cu agblklog
 binary scan [string range $data 128 136] Wu icount
 
 ## Set message formats.
-set cmformat "Checking  inode %[string length $dblocks]d (%5.1f%%)\r"
+set cmformat "Checking  inode %[string length $dblocks]d (%3.0f%%)\r"
 set rmformat "Recovered file -> %s"
-set dmformat "Done.           %[string length $dblocks]s           "
+set dmformat "Done.           %[string length $dblocks]s         "
 
 ## Function: investigate inode block.
 proc investigateInodeBlock {ag block} {
@@ -179,10 +179,10 @@ proc investigateInodeBlock {ag block} {
 			set rof [format "%s.%s" $of $extension]
 			file rename -force $of $rof
 		} else {
-			## No extension.
+			## Error. No extension.
 			set extension {}
 
-			## Error. No renaming of the recovered file.
+			## No renaming of the recovered file.
 			set rof $of
 		}
 
@@ -270,5 +270,5 @@ for {set ag 0} {$ag<$agcount} {incr ag} {
 	traverseInodeTree $ag $agi_root
 }
 
-## Print completion messages.
+## Print completion message.
 puts stderr [format $::dmformat {}]

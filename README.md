@@ -3,7 +3,7 @@ An undelete tool for the XFS filesystem.
 
 ## What does it?
 *xfs_undelete* tries to recover all files on an XFS filesystem marked as deleted.
-You may also specify a date or age since deletion, and files types to ignore or to recover exclusively.
+You may also specify a date or age since deletion, and file types to ignore or to recover exclusively.
 
 *xfs_undelete* does some sanity checks on the files to be recovered.
 This is done to avoid recovering bogus petabyte sized sparse files.
