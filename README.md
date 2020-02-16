@@ -67,7 +67,7 @@ This ignores files deleted more than one hour ago. The -t option accepts all dat
 
 	# xfs_undelete -i "" -t -1hour /dev/sda3
 
-This recovers all files deleted more than one hour ago, including “bin” files.
+This recovers all files deleted not more than one hour ago, including “bin” files.
 
 	# xfs_undelete -r "png gif" /dev/sda3
 
