@@ -77,6 +77,7 @@ set data [read $fd $sectsize]
 binary scan [string range $data   4   7] Iu blocksize
 binary scan [string range $data   8  15] Wu dblocks
 binary scan [string range $data  84  87] Iu agblocks
+binary scan [string range $data  88  91] Iu agcount
 binary scan [string range $data 102 103] Su sectsize
 binary scan [string range $data 104 105] Su inodesize
 binary scan [string range $data 106 107] Su inopblock
