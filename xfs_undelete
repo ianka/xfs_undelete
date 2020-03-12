@@ -53,15 +53,7 @@ set mimetypes [dict create {*}{
 }]
 
 ## Defaults.
-set blocksize 4096
-set dblocks   4096
-set agblocks  1024
-set agcount      4
-set sectsize   512
-set inodesize  512
-set inopblock    8
-set agblklog    10
-set icount       0
+set sectsize 512
 
 ## No inodes checked so far.
 set ichecked 0
