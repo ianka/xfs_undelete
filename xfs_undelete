@@ -297,7 +297,10 @@ set fs [lindex $argv 0]
 
 ## Get the minimum ctime to consider.
 if {[dict get $::parameters t] ne {}} {
-	set mctime [clock scan [dict get $::parameters t]]
+	if {[catch {clock scan [dict get $::parameters t]} mctime]} {
+		puts stderr "Unable to parse timespec. Please put it in a way Tcl's \[clock scan\] can understand, e.g. -2hours."
+		exit 32
+	}
 } else {
 	set mctime 0
 }
