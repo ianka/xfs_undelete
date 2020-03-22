@@ -9,79 +9,47 @@
 ## Load packages.
 package require cmdline
 
-## Parse command line options.
-if {[catch {set parameters [cmdline::getoptions argv {
-	{i.arg "bin" "list of file extensions to ignore"}
-	{o.arg xfs_undeleted "target directory for recovered files"}
-	{r.arg "" "list of file extensions to recover"}
-	{t.arg "" "deleted since"}
-} {[options] -- options are:}]} result]} {
-	puts stderr $result
-	exit 127
+
+##
+## Defaults.
+##
+
+
+## Hard coded filetypes.
+set filetypes {
+	bin application/octet-stream  "Binary data"
+	txt text/plain                "Plain Text"
 }
 
-## Get filesystem to scan from command line.
-set fs [lindex $argv 0]
+## Default sector size. Is updated after reading the superblock.
+set sectsize 512
 
-## Get the minimum ctime to consider.
-if {[dict get $::parameters t] ne {}} {
-	set mctime [clock scan [dict get $::parameters t]]
-} else {
-	set mctime 0
+
+##
+## Functions.
+##
+
+## Initialize mimetypes mappings.
+set mimetypes [dict create]
+foreach {extension mimetype name} $::filetypes {
+	dict set mimetypes $mimetype $extension
 }
 
-## Remount the target filesystem read-only if mounted.
-set env(LANG) C
-if {[catch {exec -- mount -oremount,ro $fs} err]} {
-	## No error if not mounted.
-	switch -glob -- $err {
-		"* mount point not mounted or bad option." {}
-		default {
-			puts stderr $err
-			exit 32
-		}
+## Guess extension from mimetype.
+proc extension {mimetype} {
+	## This hack is neccessary because most magic files found in the wild have
+	## very poor support for file extensions. Mime type support is usually good.
+	if {[dict exists $::mimetypes $mimetype]} {
+		return [dict get $::mimetypes $mimetype]
+	} elseif {[regexp {^.*?/([[:alnum:]]*[-.])?(.*?)(\+.*)?$} $mimetype match ldummy extension rdummy]} {
+		return [string tolower $extension]
+	} else {
+		return "bin"
 	}
 }
 
-## Create lost+found directory if nonexistent.
-file mkdir [dict get $::parameters o]
 
-## Hard coded mimetype to extension mappings.
-set mimetypes [dict create {*}{
-	application/octet-stream  bin
-	text/plain                txt
-}]
-
-## Defaults.
-set sectsize 512
-
-## No inodes checked so far.
-set ichecked 0
-
-## Open filesystem image for binary reading.
-set fd [open $fs r]
-fconfigure $fd -translation binary
-
-## Read first superblock.
-set data [read $fd $sectsize]
-
-## Get real xfs configuration from filesytem superblock.
-binary scan [string range $data   4   7] Iu blocksize
-binary scan [string range $data   8  15] Wu dblocks
-binary scan [string range $data  84  87] Iu agblocks
-binary scan [string range $data  88  91] Iu agcount
-binary scan [string range $data 102 103] Su sectsize
-binary scan [string range $data 104 105] Su inodesize
-binary scan [string range $data 106 107] Su inopblock
-binary scan [string index $data     124] cu agblklog
-binary scan [string range $data 128 136] Wu icount
-
-## Set message formats.
-set cmformat "Checking  inode %[string length $dblocks]d (%3.0f%%)\r"
-set rmformat "Recovered file -> %s"
-set dmformat "Done.           %[string length $dblocks]s         "
-
-## Function: investigate inode block.
+## Investigate inode block.
 proc investigateInodeBlock {ag block} {
 	## Calculate device block number.
 	set dblock [expr {$::agblocks*$ag+$block}]
@@ -158,15 +126,7 @@ proc investigateInodeBlock {ag block} {
 		## Reconstruct file extension from file content.
 		if {![catch {exec -ignorestderr -- file --brief --mime-type $of} mimetype]} {
 			## No error. Guess extension from mimetype.
-			## This hack is neccessary because most magic files found in the wild have
-			## very poor support for file extensions. Mime type support is usually good.
-			if {[dict exists $::mimetypes $mimetype]} {
-				set extension [dict get $::mimetypes $mimetype]
-			} elseif {[regexp {^.*?/([[:alnum:]]*[-.])?(.*?)(\+.*)?$} $mimetype match ldummy extension rdummy]} {
-				set extension [string tolower $extension]
-			} else {
-				set extension "bin"
-			}
+			set extension [extension $mimetype]
 
 			## Rename the recovered file.
 			set rof [format "%s.%s" $of $extension]
@@ -180,13 +140,13 @@ proc investigateInodeBlock {ag block} {
 		}
 
 		## Ignore all files with extensions from the ignore list.
-		if {$extension in [dict get $::parameters i]} {
+		if {$extension in [split [dict get $::parameters i] ,]} {
 			file delete -force $rof
 			continue
 		}
 
 		## Only recover those with extensions from the recover list.
-		if {[dict get $::parameters r] ne {} && $extension ni [dict get $::parameters r]} {
+		if {[dict get $::parameters r] ne {} && $extension ni [split [dict get $::parameters r] ,]} {
 			file delete -force $rof
 			continue
 		}
@@ -204,7 +164,8 @@ proc investigateInodeBlock {ag block} {
 	}
 }
 
-## Function: traverse through inode tree.
+
+## Traverse through inode tree.
 proc traverseInodeTree {ag block} {
 	## Read inode tree block.
 	seek $::fd [expr {$::blocksize*($::agblocks*$ag+$block)}]
@@ -250,6 +211,121 @@ proc traverseInodeTree {ag block} {
 	}
 }
 
+
+##
+## Main program.
+##
+
+## Parse command line options.
+if {[catch {set parameters [cmdline::getoptions argv {
+	{t.arg ""              "deleted since"}
+	{l                     "list file extensions understood"}
+	{i.arg "bin"           "list of file extensions to ignore"}
+	{r.arg ""              "list of file extensions to recover"}
+	{o.arg "xfs_undeleted" "target directory for recovered files"}
+} {[options] -- options are:}]} result]} {
+	puts stderr $result
+	exit 127
+}
+
+
+## Check if we should list file extensions understood.
+if {[dict get $::parameters l]} {
+	## Yes. Get file types understood by the file utility
+	if {![catch {exec -ignorestderr -- file -l 2>/dev/null} data]} {
+		## Setup known extensions.
+		set known {}
+		foreach {extension mimetype name} $::filetypes {
+			lappend known $extension
+		}
+
+		## Parse returned filetypes.
+		set ewidth 0
+		set mwidth 0
+		foreach line [split $data \n] {
+			## Only care for "Strength" lines.
+			if {[regexp {^Strength += +[[:digit:]]+@[[:digit:]]+: (.*) \[(.*)\]$} $line match name mimetype]} {
+				## Remember filetypes.
+				set extension [extension $mimetype]
+				if {$extension ni $known} {
+					lappend known $extension
+					lappend ::filetypes $extension $mimetype $name
+				}
+
+				## Update maximum column widths for output formatting.
+				if {[string length $extension]>$ewidth} {
+					set ewidth [string length $extension]
+				}
+				if {[string length $mimetype]>$mwidth} {
+					set mwidth [string length $mimetype]
+				}
+			}
+		}
+
+		## Return the filetypes, sorted by extension.
+		foreach {extension mimetype name} [lsort -dictionary -stride 3 -index 0 $::filetypes] {
+			puts [format "%-${ewidth}s %-${mwidth}s %s" $extension $mimetype $name]
+		}
+	}
+
+	## Exit program
+	exit 0
+}
+
+
+## Get filesystem to scan from command line.
+set fs [lindex $argv 0]
+
+## Get the minimum ctime to consider.
+if {[dict get $::parameters t] ne {}} {
+	set mctime [clock scan [dict get $::parameters t]]
+} else {
+	set mctime 0
+}
+
+## Remount the target filesystem read-only if mounted.
+set env(LANG) C
+if {[catch {exec -- mount -oremount,ro $fs} err]} {
+	## No error if not mounted.
+	switch -glob -- $err {
+		"* mount point not mounted or bad option." {}
+		default {
+			puts stderr $err
+			exit 32
+		}
+	}
+}
+
+## Create lost+found directory if nonexistent.
+file mkdir [dict get $::parameters o]
+
+## No inodes checked so far.
+set ichecked 0
+
+## Open filesystem image for binary reading.
+set fd [open $fs r]
+fconfigure $fd -translation binary
+
+## Read first superblock.
+set data [read $fd $sectsize]
+
+## Get xfs configuration from filesystem superblock.
+binary scan [string range $data   4   7] Iu blocksize
+binary scan [string range $data   8  15] Wu dblocks
+binary scan [string range $data  84  87] Iu agblocks
+binary scan [string range $data  88  91] Iu agcount
+binary scan [string range $data 102 103] Su sectsize
+binary scan [string range $data 104 105] Su inodesize
+binary scan [string range $data 106 107] Su inopblock
+binary scan [string index $data     124] cu agblklog
+binary scan [string range $data 128 136] Wu icount
+
+## Set message formats.
+set cmformat "Checking  inode %[string length $dblocks]d (%3.0f%%)\r"
+set rmformat "Recovered file -> %s"
+set dmformat "Done.           %[string length $dblocks]s         "
+
+
 ## Run through all allocation groups.
 for {set ag 0} {$ag<$agcount} {incr ag} {
 	## Read inode B+tree information sector of this allocation group.
@@ -262,6 +338,7 @@ for {set ag 0} {$ag<$agcount} {incr ag} {
 	## Start traversal of this allocation group's inode B+Tree with root block.
 	traverseInodeTree $ag $agi_root
 }
+
 
 ## Print completion message.
 puts stderr [format $::dmformat {}]
