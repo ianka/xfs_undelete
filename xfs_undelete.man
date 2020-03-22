@@ -1,0 +1,93 @@
+'\" t
+.TH xfs_undelete 8 "March 2020" "" "System Manager's Manual"
+.SH NAME
+xfs_undelete \- an undelete tool for the XFS filesystem
+.SH SYNOPSIS
+.B xfs_undelete
+[
+.B \-t
+.I timespec
+] [
+.B \-r
+.I filetypes
+] [
+.B \-i
+.I filetypes
+] [
+.B \-o
+.I output_directory
+] [
+.B \-m
+.I magicfiles
+]
+.I device
+.br
+.B xfs_undelete -l
+[
+.B \-m
+.I magicfiles
+]
+.SH DESCRIPTION
+\fBxfs_undelete\fR tries to recover all files on an XFS filesystem marked as deleted. The filesystem is specified using the \fIdevice\fR argument which should be the device name of the disk partition or volume containing the filesystem.
+
+You may also specify a date or age since deletion, and file types to ignore or to recover exclusively.
+
+The recovered file cannot be undeleted in place and thuis, it is stored on another filesystem in a subdirectory, by default \fIxfs_undeleted\fR relative to the current directory. The filename cannot be recovered and thus, it is put as the time of deletion, the inode number, and a guessed file extension. You have to check the recovered files you are interested in by hand and rename them properly. Also, the file length cannot be recovered and thus, the recovered files are padded with \fB\\0\fR characters up to the next xfs block size boundary. Most programs simply ignore those \fB\\0\fR characters but you may want to remove them by hand.
+
+This tool does some sanity checks on the files to be recovered. That is to avoid "recovering" bogus petabyte sized sparse files. In addition, it does not recover anything unidentifiable (given you have the file utility installed) by default. Specify \fB-i\fR \fI""\fR on the command line if you want to recover those non-bogus but still unidentifiable files.
+.SH OPTIONS
+.TP
+\fB\-t\fR \fItimespec\fR
+Only recover files up to a maximum age. The \fItimespec\fR value may be a date as \fI2020-03-19\fR for undeleting any file deleted since March 19th, 2020, or \fI-2hour\fR for undeleting any file deleted since 2 hours before now. It accepts all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, deleted files of all ages are being recovered.
+.TP
+\fB\-r\fR \fIfiletypes\fR
+Only recover files with a filetype from this \fBcomma\fR-separated list of filetypes. By default this list is empty, all files are being recovered, but also see the \fB-i\fR option. (The file types are file extensions guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion. See the \fB-l\fR option for a list of valid file types.)
+.TP
+\fB\-i\fR \fIfiletypes\fR
+Ignore files with a filetype from this \fBcomma\fR-separated list of filetypes. By default this list is set to \fIbin\fR, all files of unknown type are being ignored, but also see the \fB-r\fR option. (The file types are file extensions guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion. See the \fB-l\fR option for a list of valid file types.)
+.TP
+\fB\-o\fR \fIoutput_directory\fR
+Specify the directory the recovered files are copied to. By default this is \fIxfs_undeleted\fR relative to the current directory.
+.TP
+\fB\-m\fR \fImagicfiles\fR
+Specify an alternate list of files and directories containing magic. This can be a single item, or a \fBcolon\fR-separated list. If a compiled magic file is found alongside a file or directory, it will be used instead. This option is passed to the \fBfile\fR utility in verbatim if specified.
+.TP
+\fB\-l\fR\fR
+Shows a list of guessed filetypes suitable for use with the \fB-r\fR and \fB-i\fR options, along with their mimetype and common name as put by the \fBfile\fR utility.
+.SH EXAMPLES
+.BD -literal -offset indent
+# cd ~ ; xfs_undelete /dev/mapper/cr_data
+
+This stores the recovered files from /dev/mapper/cr_data in the directory ~/xfs_undeleted.
+
+# xfs_undelete -o /mnt/external_harddisk /dev/sda3
+
+This stores the recovered files from /dev/sda3 in the directory /mnt/external_harddisk.
+
+# xfs_undelete -t 2020-03-19 /dev/sda3
+
+This ignores files deleted before March 19th, 2020.
+
+# xfs_undelete -t -1hour /dev/sda3
+
+This ignores files deleted more than one hour ago. The -t option accepts all dates understood by Tcl’s [clock scan] command.
+
+# xfs_undelete -i "" -t -2hour /dev/sda3
+
+This recovers all files deleted not more than two hours ago, including "bin" files.
+
+# xfs_undelete -r png,gif /dev/sda3
+
+This only recovers png and gif files.
+.ED
+.SH TROUBLESHOOTING
+When operating on devices, this program must be run as root, as it remounts the source filesystem read-only to put it into a consistent state. This remount may fail if the filesystem is busy e.g. because it's your \fI/home\fR or \fI/\fR filesystem and there are programs having files opened in read-write mode on it. Stop those programs e.g. by running \fIfuser -m /home\fR or ultimately, put your computer into single-user mode to have them stopped by init.
+
+For the same reason, you need some space on another filesystem to put the recovered files onto. If your computer only has one huge xfs filesystem, you need to connect external storage.
+
+If the recovered files have no file extensions, or if the \fB\-r\fR and \fB\-i\fR options aren't functional, check with the \fB-l\fR option if the \fBfile\fR utility functions as intended. If the returned list is very short, the \fBfile\fR utility is most likely not installed or the magic files for the \fBfile\fR utility, often shipped extra in a package named \fIfile-magic\fR are missing, or they don't feature mimetypes.
+.SH SEE ALSO
+\fBxfs\fR(5), \fBfuser\fR(1), \fBclock\fR(n)
+.SH AUTHORS
+Jan Kandziora <jjj@gmx.de>
+
