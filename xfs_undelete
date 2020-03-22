@@ -289,6 +289,10 @@ if {[catch {exec -- mount -oremount,ro $fs} err]} {
 	## No error if not mounted.
 	switch -glob -- $err {
 		"* mount point not mounted or bad option." {}
+		{mount: only root can use "--options" option} {
+			puts "Root privileges are required to run this command."
+			exit 32
+		}
 		default {
 			puts stderr $err
 			exit 32
