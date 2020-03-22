@@ -224,7 +224,7 @@ if {[catch {set parameters [cmdline::getoptions argv {
 	{o.arg "xfs_undeleted" "target directory for recovered files"}
 	{m.arg ""              "magic path passed to the 'file' utility"}
 	{l                     "list file extensions understood"}
-} {[options] -- options are:}]} result]} {
+} {[options] device -- options are:}]} result]} {
 	puts stderr $result
 	exit 127
 }
@@ -292,9 +292,6 @@ if {[dict get $::parameters l]} {
 }
 
 
-## Get filesystem to scan from command line.
-set fs [lindex $argv 0]
-
 ## Get the minimum ctime to consider.
 if {[dict get $::parameters t] ne {}} {
 	if {[catch {clock scan [dict get $::parameters t]} mctime]} {
@@ -305,20 +302,40 @@ if {[dict get $::parameters t] ne {}} {
 	set mctime 0
 }
 
-## Remount the target filesystem read-only if mounted.
-set env(LANG) C
-if {[catch {exec -- mount -oremount,ro $fs} err]} {
-	## No error if not mounted.
-	switch -glob -- $err {
-		"* mount point not mounted or bad option." {}
-		{mount: only root can use "--options" option} {
-			puts "Root privileges are required to run this command."
-			exit 32
+
+## Get filesystem to scan from command line.
+if {[catch {exec -- readlink -e [lindex $argv 0]} fs] || $fs eq {}} {
+	puts stderr "Please specify a block device or an XFS filesystem image."
+	exit 32
+}
+
+## Check for the type of filesystem device.
+switch -- [file type $fs] {
+	"blockSpecial" {
+		## Block device. Remount it read-only if mounted.
+		set env(LANG) C
+		if {[catch {exec -- mount -oremount,ro $fs} err]} {
+			## No error if not mounted.
+			switch -glob -- $err {
+				"* mount point not mounted or bad option." {}
+				{mount: only root can use "--options" option} {
+					puts "Root privileges are required to run this command on devices."
+					exit 32
+				}
+				default {
+					puts stderr $err
+					exit 32
+				}
+			}
 		}
-		default {
-			puts stderr $err
-			exit 32
-		}
+	}
+	"file" {
+		## Image file.
+	}
+	default {
+		## Something else.
+		puts "Please specify a block device or an XFS filesystem image."
+		exit 32
 	}
 }
 
@@ -334,6 +351,12 @@ fconfigure $fd -translation binary
 
 ## Read first superblock.
 set data [read $fd $sectsize]
+
+## Fail if this isn't an XFS superblock
+if {[string range $data 0 3] ne "XFSB"} {
+	puts "This isn't an XFS filesystem or filesystem image."
+	exit 32
+}
 
 ## Get xfs configuration from filesystem superblock.
 binary scan [string range $data   4   7] Iu blocksize
