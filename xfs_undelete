@@ -80,7 +80,7 @@ proc investigateInodeBlock {ag block} {
 		if {$ctime<$::mctime} continue
 
 		## Get output filename.
-		set of [file join [dict get $::parameters o] [format "%s_%s" [clock format $ctime -format "%Y-%m-%d-%H:%M"] $inode]]
+		set of [file join [dict get $::parameters o] [format "%s_%s" [clock format $ctime -format "%Y-%m-%d-%H-%M"] $inode]]
 
 		## Make a dict of any extents found.
 		set extents [dict create]
