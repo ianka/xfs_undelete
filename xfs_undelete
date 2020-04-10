@@ -194,7 +194,7 @@ proc traverseInodeTree {ag block} {
 			traverseInodeTree $ag $agi_branch
 		}
 	} else {
-		## Go through all leaf records.
+		## Leaf. Run through all leaf records.
 		for {set rec 0} {$rec<$bb_numrecs} {incr rec ; incr index 16} {
 			## Get start inode number.
 			binary scan [string range $data $index $index+3] Iu agi_start
