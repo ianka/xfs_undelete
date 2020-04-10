@@ -49,6 +49,16 @@ proc extension {mimetype} {
 }
 
 
+## Readlink helper.
+proc readlink {symlink} {
+	if {[catch {exec -- readlink -e $symlink} node]} {
+		return
+	}
+
+	return $node
+}
+
+
 ## Investigate inode block.
 proc investigateInodeBlock {ag block} {
 	## Calculate device block number.
@@ -304,57 +314,97 @@ if {[dict get $::parameters t] ne {}} {
 
 
 ## Get filesystem to scan from command line.
-if {[catch {exec -- readlink -e [lindex $argv 0]} fs] || $fs eq {}} {
+if {[lindex $argv 0] eq {} || [set fs [readlink [lindex $argv 0]]] eq {}} {
 	puts stderr "Please specify a block device or an XFS filesystem image."
 	exit 32
 }
 
-## Check for the type of filesystem device.
-switch -- [file type $fs] {
-	"blockSpecial" {
-		## Block device. Remount it read-only if mounted.
-		set env(LANG) C
-		if {[catch {exec -- mount -oremount,ro $fs} err]} {
-			## No error if not mounted.
-			switch -glob -- $err {
-				"* mount point not mounted or bad option." {}
-				{mount: only root can use "--options" option} {
-					puts "Root privileges are required to run this command on devices."
-					exit 32
-				}
-				default {
-					puts stderr $err
-					exit 32
-				}
+## Check for the type of the filesystem node.
+if {[file type $fs] ni [list blockSpecial file]} {
+	## Something else.
+	puts stderr "Please specify a block device or an XFS filesystem image."
+	exit 32
+}
+
+## Get list of mounted filesystems.
+if {[catch {exec -- mount} result]} {
+	## Error during mount. Fail.
+	puts stderr $result
+	exit 32
+}
+
+## Parse list of mounted filesystems.
+foreach line [split $result \n] {
+	## Skip non-xfs entries.
+	if {[lindex $line 4] ne "xfs"} continue
+
+	## Skip non-matching entries.
+	if {[readlink [lindex $line 0]] ne $fs} continue
+
+	## Skip non-read-write filesystems.
+	if {"rw" ni [split [string trim [lindex $line 5] "()"] ,]} continue
+
+	## Log.
+	puts stderr "[lindex $argv 0] ($fs) is currently mounted read-write. Trying to remount read-only."
+
+	## The rw option has been found. Try to remount read-only.
+	set lang $env(LANG)
+	set env(LANG) C
+	if {[catch {exec -- mount -oremount,ro [lindex $line 2]} err]} {
+		switch -glob -- $err {
+			{mount: only root can use "--options" option} {
+				## Fail if we cannot remount due to missing permissions.
+				puts stderr "Remount failed. Root privileges are required to run this command on this filesystem."
+				exit 32
+			}
+			{mount: * mount point is busy.} {
+				puts stderr "Remount failed. $err"
+				exit 32
+			}
+			"* mount point not mounted or bad option." {
+				## Ignore this error.
+			}
+			default {
+				## Error during mount. Fail.
+				puts stderr $err
+				exit 32
 			}
 		}
 	}
-	"file" {
-		## Image file.
-	}
-	default {
-		## Something else.
-		puts "Please specify a block device or an XFS filesystem image."
-		exit 32
-	}
+	set env(LANG) $lang
+
+	## Sucess. Log.
+	puts stderr "Remount successful."
+
+	## Ignore multiple mounts of the same filesystem as they all share the same read-only option.
+	break
 }
 
+
+## Open filesystem image for binary reading.
+if {[catch {open $fs r} fd]} {
+	puts stderr "Opening of filesystem failed. $fd"
+	exit 32
+}
+
+## No character set translation.
+fconfigure $fd -translation binary
+
 ## Create lost+found directory if nonexistent.
-file mkdir [dict get $::parameters o]
+if {[catch {file mkdir [dict get $::parameters o]} err]} {
+	puts stderr "Cannot create output directory. $err"
+	exit 32
+}
 
 ## No inodes checked so far.
 set ichecked 0
-
-## Open filesystem image for binary reading.
-set fd [open $fs r]
-fconfigure $fd -translation binary
 
 ## Read first superblock.
 set data [read $fd $sectsize]
 
 ## Fail if this isn't an XFS superblock
 if {[string range $data 0 3] ne "XFSB"} {
-	puts "This isn't an XFS filesystem or filesystem image."
+	puts stderr "This isn't an XFS filesystem or filesystem image."
 	exit 32
 }
 
@@ -374,6 +424,9 @@ set cmformat "Checking  inode %[string length $dblocks]d (%3.0f%%)\r"
 set rmformat "Recovered file -> %s"
 set dmformat "Done.           %[string length $dblocks]s         "
 
+
+## Log.
+puts stderr "Starting recovery."
 
 ## Run through all allocation groups.
 for {set ag 0} {$ag<$agcount} {incr ag} {
