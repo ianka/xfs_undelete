@@ -44,7 +44,7 @@ In addition, you need enough space on another filesystem to store all the recove
 ## Limitations
 - The way XFS deletes files makes it impossible to recover the filename or the path. You cannot undelete only certain files. The tool however has a mechanism only to recover files deleted since a certain date. See the -t option.
 - The way XFS deletes files makes it impossible to recover heavily fragmented files. For typical 512 byte inodes, you can only recover files having at maximum 21 extents (of arbitrary size). Files with more extents cannot be recovered at all by this program.
-- The way XFS deletes files makes it impossible to retrieve the correct file size. Most files will be padded with zeroes so they fit the XFS block size. Most programs do not bother anyway.
+- The way XFS deletes files makes it impossible to retrieve the correct file size. Most files will be padded with zeroes so they fit the XFS block size. Most programs do not bother anyway. Files of the text/ mimetypes get their trailing zeroes trimmed by default after recovery. See the -z option to change this behaviour.
 
 ## How to use it
 
@@ -69,9 +69,9 @@ This ignores files deleted more than one hour ago. The -t option accepts all dat
 
 This recovers all files deleted not more than one hour ago, including “bin” files.
 
-	# xfs_undelete -r png,gif /dev/sda3
+	# xfs_undelete -r 'image/*,gimp-*' /dev/sda3
 
-This only recovers png and gif files.
+This only recovers files matching any image/ mimetype plus those getting assigned an extension starting with gimp-.
 
 Please understand the file extensions *xfs_undelete* understands are guessed from the MIME type the *file* utility reports.
 It is not neccessarily the same file extension the file had before you deleted it.

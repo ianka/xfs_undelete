@@ -192,6 +192,26 @@ proc investigateInodeBlock {ag block} {
 			}
 		}
 
+		## Remove trailing zeroes for those files with extensions or mimetypes from the trailing zero list.
+		if {[matchFiletype [split [dict get $::parameters z] ,] $mimetype $extension]} {
+			## Open the the recovered file. No character set nor crlf translation.
+			set rfd [open $rof r+]
+			fconfigure $rfd -translation binary
+
+			## Read last block and trim trailing zeroes.
+			seek $rfd -$::blocksize end
+			set lastblock [string trimright [read $rfd $::blocksize] \0]
+
+			## Rewrite last block.
+			seek $rfd -$::blocksize end
+			puts -nonewline $rfd $lastblock
+			chan truncate $rfd
+
+			## Close recovered file.
+			close $rfd
+		}
+
+
 		## Log.
 		puts stderr [format $::rmformat $rof]
 	}
@@ -254,6 +274,7 @@ if {[catch {set parameters [cmdline::getoptions argv {
 	{t.arg ""              "deleted since"}
 	{r.arg "*"             "list of file extensions and mimetypes to recover"}
 	{i.arg "bin"           "list of file extensions and mimetypes to ignore"}
+	{z.arg "text/*"        "list of file extensions and mimetypes to remove all trailing zeroes from"}
 	{o.arg "xfs_undeleted" "target directory for recovered files"}
 	{m.arg ""              "magic path passed to the 'file' utility"}
 	{l                     "list file extensions understood"}
@@ -410,14 +431,15 @@ foreach line [split $result \n] {
 }
 
 
-## Open filesystem image for binary reading.
+## Open filesystem image.
 if {[catch {open $fs r} fd]} {
 	puts stderr "Opening of filesystem failed. $fd"
 	exit 32
 }
 
-## No character set translation.
+## No character set nor crlf translation.
 fconfigure $fd -translation binary
+
 
 ## Create lost+found directory if nonexistent.
 if {[catch {file mkdir [dict get $::parameters o]} err]} {

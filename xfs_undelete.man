@@ -46,6 +46,9 @@ Only recover files with a filetype matching a pattern from this \fBcomma\fR-sepa
 \fB\-i\fR \fIfiletypes\fR
 Ignore files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. Patterns of the form */* are matched against known mimetypes, all others are matched against known file extensions. (The file extensions are guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion.) See the \fB-l\fR option for a list of valid file types. By default this list is set to \fIbin\fR; all files of unknown type are being ignored, but also see the \fB-r\fR option. \fBNote:\fR you may want to quote the list to avoid the shell doing the wildcard expansion.
 .TP
+\fB\-z\fR \fIfiletypes\fR
+Remove trailing zeroes from all files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. Patterns of the form */* are matched against known mimetypes, all others are matched against known file extensions. (The file extensions are guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion.) See the \fB-l\fR option for a list of valid file types. By default this list is set to \fItext/*\fR; all files of text/* mimetype have their trailing zeroes removed. \fBNote:\fR you may want to quote the list to avoid the shell doing the wildcard expansion.
+.TP
 \fB\-o\fR \fIoutput_directory\fR
 Specify the directory the recovered files are copied to. By default this is \fIxfs_undeleted\fR relative to the current directory.
 .TP
