@@ -49,6 +49,29 @@ proc extension {mimetype} {
 }
 
 
+## Check if the file type matches against a list of patterns.
+proc matchFiletype {patterns mimetype extension} {
+	## Run through all patterns.
+	foreach pattern $patterns {
+		## Check if extension or mimetype.
+		if {[string match */* $pattern]} {
+			## Mimetype.
+			if {[string match $pattern $mimetype]} {
+				return 1
+			}
+		} else {
+			## Extension.
+			if {[string match $pattern $extension]} {
+				return 1
+			}
+		}
+	}
+
+	## No match.
+	return 0
+}
+
+
 ## Readlink helper.
 proc readlink {symlink} {
 	if {[catch {exec -- readlink -e $symlink} node]} {
@@ -149,14 +172,14 @@ proc investigateInodeBlock {ag block} {
 			set rof $of
 		}
 
-		## Ignore all files with extensions from the ignore list.
-		if {$extension in [split [dict get $::parameters i] ,]} {
+		## Ignore all files with extensions or mimetypes from the ignore list.
+		if {[matchFiletype [split [dict get $::parameters i] ,] $mimetype $extension]} {
 			file delete -force $rof
 			continue
 		}
 
-		## Only recover those with extensions from the recover list.
-		if {[dict get $::parameters r] ne {} && $extension ni [split [dict get $::parameters r] ,]} {
+		## Only recover those files with extensions or mimetypes from the recover list.
+		if {![matchFiletype [split [dict get $::parameters r] ,] $mimetype $extension]} {
 			file delete -force $rof
 			continue
 		}
@@ -229,14 +252,20 @@ proc traverseInodeTree {ag block} {
 ## Parse command line options.
 if {[catch {set parameters [cmdline::getoptions argv {
 	{t.arg ""              "deleted since"}
-	{r.arg ""              "list of file extensions to recover"}
-	{i.arg "bin"           "list of file extensions to ignore"}
+	{r.arg "*"             "list of file extensions and mimetypes to recover"}
+	{i.arg "bin"           "list of file extensions and mimetypes to ignore"}
 	{o.arg "xfs_undeleted" "target directory for recovered files"}
 	{m.arg ""              "magic path passed to the 'file' utility"}
 	{l                     "list file extensions understood"}
 } {[options] device -- options are:}]} result]} {
 	puts stderr $result
 	exit 127
+}
+
+
+## Set default pattern for the r parameter if empty.
+if {[dict get $::parameters r] eq {}} {
+	dict set ::parameters r *
 }
 
 

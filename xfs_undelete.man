@@ -32,7 +32,7 @@ xfs_undelete \- an undelete tool for the XFS filesystem
 
 You may also specify a date or age since deletion, and file types to ignore or to recover exclusively.
 
-The recovered file cannot be undeleted in place and thuis, it is stored on another filesystem in a subdirectory, by default \fIxfs_undeleted\fR relative to the current directory. The filename cannot be recovered and thus, it is put as the time of deletion, the inode number, and a guessed file extension. You have to check the recovered files you are interested in by hand and rename them properly. Also, the file length cannot be recovered and thus, the recovered files are padded with \fB\\0\fR characters up to the next xfs block size boundary. Most programs simply ignore those \fB\\0\fR characters but you may want to remove them by hand.
+The recovered file cannot be undeleted in place and thus, it is stored on another filesystem in a subdirectory, by default \fIxfs_undeleted\fR relative to the current directory. The filename cannot be recovered and thus, it is put as the time of deletion, the inode number, and a guessed file extension. You have to check the recovered files you are interested in by hand and rename them properly. Also, the file length cannot be recovered and thus, the recovered files are padded with \fB\\0\fR characters up to the next xfs block size boundary. Most programs simply ignore those \fB\\0\fR characters but you may want to remove them by hand.
 
 This tool does some sanity checks on the files to be recovered. That is to avoid "recovering" bogus petabyte sized sparse files. In addition, it does not recover anything unidentifiable (given you have the file utility installed) by default. Specify \fB-i\fR \fI""\fR on the command line if you want to recover those non-bogus but still unidentifiable files.
 .SH OPTIONS
@@ -41,10 +41,10 @@ This tool does some sanity checks on the files to be recovered. That is to avoid
 Only recover files up to a maximum age. The \fItimespec\fR value may be a date as \fI2020-03-19\fR for undeleting any file deleted since March 19th, 2020, or \fI-2hour\fR for undeleting any file deleted since 2 hours before now. It accepts all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, deleted files of all ages are being recovered.
 .TP
 \fB\-r\fR \fIfiletypes\fR
-Only recover files with a filetype from this \fBcomma\fR-separated list of filetypes. By default this list is empty, all files are being recovered, but also see the \fB-i\fR option. (The file types are file extensions guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion. See the \fB-l\fR option for a list of valid file types.)
+Only recover files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. Patterns of the form */* are matched against known mimetypes, all others are matched against known file extensions. (The file extensions are guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion.) See the \fB-l\fR option for a list of valid file types. By default this pattern is *; all files are being recovered, but also see the \fB-i\fR option. \fBNote:\fR you may want to quote the list to avoid the shell doing the wildcard expansion.
 .TP
 \fB\-i\fR \fIfiletypes\fR
-Ignore files with a filetype from this \fBcomma\fR-separated list of filetypes. By default this list is set to \fIbin\fR, all files of unknown type are being ignored, but also see the \fB-r\fR option. (The file types are file extensions guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion. See the \fB-l\fR option for a list of valid file types.)
+Ignore files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. Patterns of the form */* are matched against known mimetypes, all others are matched against known file extensions. (The file extensions are guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion.) See the \fB-l\fR option for a list of valid file types. By default this list is set to \fIbin\fR; all files of unknown type are being ignored, but also see the \fB-r\fR option. \fBNote:\fR you may want to quote the list to avoid the shell doing the wildcard expansion.
 .TP
 \fB\-o\fR \fIoutput_directory\fR
 Specify the directory the recovered files are copied to. By default this is \fIxfs_undeleted\fR relative to the current directory.
@@ -76,9 +76,9 @@ This ignores files deleted more than one hour ago. The -t option accepts all dat
 
 This recovers all files deleted not more than two hours ago, including "bin" files.
 
-# xfs_undelete -r png,gif /dev/sda3
+# xfs_undelete -r 'image/*,gimp-*' /dev/sda3
 
-This only recovers png and gif files.
+This only recovers files matching any image/ mimetype plus those getting assigned an extension starting with gimp-.
 .ED
 .SH TROUBLESHOOTING
 When operating on devices, this program must be run as root, as it remounts the source filesystem read-only to put it into a consistent state. This remount may fail if the filesystem is busy e.g. because it's your \fI/home\fR or \fI/\fR filesystem and there are programs having files opened in read-write mode on it. Stop those programs e.g. by running \fIfuser -m /home\fR or ultimately, put your computer into single-user mode to have them stopped by init.
