@@ -14,6 +14,9 @@ xfs_undelete \- an undelete tool for the XFS filesystem
 .B \-i
 .I filetypes
 ] [
+.B \-z
+.I filetypes
+] [
 .B \-o
 .I output_directory
 ] [
@@ -32,7 +35,7 @@ xfs_undelete \- an undelete tool for the XFS filesystem
 
 You may also specify a date or age since deletion, and file types to ignore or to recover exclusively.
 
-The recovered file cannot be undeleted in place and thus, it is stored on another filesystem in a subdirectory, by default \fIxfs_undeleted\fR relative to the current directory. The filename cannot be recovered and thus, it is put as the time of deletion, the inode number, and a guessed file extension. You have to check the recovered files you are interested in by hand and rename them properly. Also, the file length cannot be recovered and thus, the recovered files are padded with \fB\\0\fR characters up to the next xfs block size boundary. Most programs simply ignore those \fB\\0\fR characters but you may want to remove them by hand.
+The recovered file cannot be undeleted in place and thus, it is stored on another filesystem in a subdirectory, by default \fIxfs_undeleted\fR relative to the current directory. The filename cannot be recovered and thus, it is put as the time of deletion, the inode number, and a guessed file extension. You have to check the recovered files you are interested in by hand and rename them properly. Also, the file length cannot be recovered and thus, the recovered files are padded with \fB\\0\fR characters up to the next xfs block size boundary. Most programs simply ignore those \fB\\0\fR characters but you may want to remove them by hand or automatically with the help of the \fB-z\fR option.
 
 This tool does some sanity checks on the files to be recovered. That is to avoid "recovering" bogus petabyte sized sparse files. In addition, it does not recover anything unidentifiable (given you have the file utility installed) by default. Specify \fB-i\fR \fI""\fR on the command line if you want to recover those non-bogus but still unidentifiable files.
 .SH OPTIONS
@@ -56,7 +59,7 @@ Specify the directory the recovered files are copied to. By default this is \fIx
 Specify an alternate list of files and directories containing magic. This can be a single item, or a \fBcolon\fR-separated list. If a compiled magic file is found alongside a file or directory, it will be used instead. This option is passed to the \fBfile\fR utility in verbatim if specified.
 .TP
 \fB\-l\fR\fR
-Shows a list of guessed filetypes suitable for use with the \fB-r\fR and \fB-i\fR options, along with their mimetype and common name as put by the \fBfile\fR utility.
+Shows a list of filetypes suitable for use with the \fB-r\fR, \fB-i\fR, and \fB-z\fR options, along with common name as put by the \fBfile\fR utility.
 .SH EXAMPLES
 .BD -literal -offset indent
 # cd ~ ; xfs_undelete /dev/mapper/cr_data
