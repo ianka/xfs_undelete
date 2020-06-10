@@ -82,6 +82,38 @@ proc readlink {symlink} {
 }
 
 
+## DD helper.
+proc dd {args} {
+	upvar inode restartinode
+
+	## Setup C locale for parsing error messages
+	set lang $::env(LANG)
+	set ::env(LANG) C
+
+	## Call dd with given options.
+	if {[catch {exec -ignorestderr -- dd {*}$args 2>@1} err]} {
+		## Evalulate error message.
+		switch -glob -- [lindex [split $err \n] 0] {
+			"*: No space left on device" {
+				puts stderr [format $::offormat {}]
+				puts stderr "To restart at this point, call the script with the option -s $restartinode"
+				exit 32
+			}
+			default {
+				## Reset locale.
+				set ::env(LANG) $lang
+
+				## Ignore the error and continue with next inode.
+				return -code continue
+			}
+		}
+	}
+
+	## No error. Reset locale.
+	set ::env(LANG) $lang
+}
+
+
 ## Investigate inode block.
 proc investigateInodeBlock {ag block} {
 	## Calculate device block number.
@@ -100,8 +132,16 @@ proc investigateInodeBlock {ag block} {
 		binary scan [string range $data $boffset+152 $boffset+159] Wu inode
 
 		## Log each visited inode.
-		puts -nonewline stderr [format $::cmformat $inode [expr {100*$::ichecked/double($::icount)}]]
+		puts -nonewline stderr [format [expr {$::passedstart?$::cmformat:$::skformat}] $inode [expr {100*$::ichecked/double($::icount)}]]
 		incr ::ichecked
+
+		## Check if this is the inode we should pass before starting recovery
+		if {[dict get $::parameters s] eq $inode} {
+			set ::passedstart 1
+		}
+
+		## Skip if we haven't passed the start inode yet.
+		if {!$::passedstart} continue
 
 		## Skip if not the magic string of an unused/deleted inode.
 		if {[string range $data $boffset $boffset+7] ne "IN\0\0\3\2\0\0"} continue
@@ -154,7 +194,7 @@ proc investigateInodeBlock {ag block} {
 		if {![dict exist $extents 0]} continue
 
 		## Recover first block of loffset zero extent for file type reconstruction. Ignore file if dd reported a problem.
-		if {[catch {exec -ignorestderr -- dd if=$::fs of=$of bs=$::blocksize skip=[dict get $extents 0 skip] seek=0 count=1 conv=notrunc status=none}]} continue
+		dd if=$::fs of=$of bs=$::blocksize skip=[dict get $extents 0 skip] seek=0 count=1 conv=notrunc status=none
 
 		## Reconstruct file extension from file content.
 		if {![catch {exec -ignorestderr -- file --brief --mime-type $of {*}$::magicopts} mimetype]} {
@@ -188,7 +228,7 @@ proc investigateInodeBlock {ag block} {
 		dict for {loffset inf} $extents {
 			dict with inf {
 				## Recover the data from this extent. Ignore extents for which dd reported a problem.
-				catch {exec -ignorestderr -- dd if=$::fs of=$rof bs=$::blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none}
+				dd if=$::fs of=$rof bs=$::blocksize skip=$skip seek=$loffset count=$count conv=notrunc status=none
 			}
 		}
 
@@ -276,6 +316,7 @@ if {[catch {set parameters [cmdline::getoptions argv {
 	{i.arg "bin"           "list of file extensions and mimetypes to ignore"}
 	{z.arg "text/*"        "list of file extensions and mimetypes to remove all trailing zeroes from"}
 	{o.arg "xfs_undeleted" "target directory for recovered files"}
+	{s.arg ""              "restart at inode number"}
 	{m.arg ""              "magic path passed to the 'file' utility"}
 	{l                     "list file extensions understood"}
 } {[options] device -- options are:}]} result]} {
@@ -288,6 +329,10 @@ if {[catch {set parameters [cmdline::getoptions argv {
 if {[dict get $::parameters r] eq {}} {
 	dict set ::parameters r *
 }
+
+
+## We passed the start inode already if there wasn't one set.
+set passedstart [expr {[dict get $::parameters s] eq {}}]
 
 
 ## Pass magic path to file if specified
@@ -471,9 +516,11 @@ binary scan [string index $data     124] cu agblklog
 binary scan [string range $data 128 136] Wu icount
 
 ## Set message formats.
+set skformat "Skipping  inode %[string length $dblocks]d (%3.0f%%)\r"
 set cmformat "Checking  inode %[string length $dblocks]d (%3.0f%%)\r"
 set rmformat "Recovered file -> %s"
 set dmformat "Done.           %[string length $dblocks]s         "
+set offormat "No space left on output device.%[string length $dblocks]s         "
 
 
 ## Log.

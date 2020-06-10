@@ -20,6 +20,9 @@ xfs_undelete \- an undelete tool for the XFS filesystem
 .B \-o
 .I output_directory
 ] [
+.B \-s
+.I start_inode
+] [
 .B \-m
 .I magicfiles
 ]
@@ -54,6 +57,9 @@ Remove trailing zeroes from all files with a filetype matching a pattern from th
 .TP
 \fB\-o\fR \fIoutput_directory\fR
 Specify the directory the recovered files are copied to. By default this is \fIxfs_undeleted\fR relative to the current directory.
+.TP
+\fB\-s\fR \fIstart_inode\fR
+Specify the inode number the recovery should be started at. This must be an existing inode number in the source filesystem, as the inode trees are traversed until this particular number is found. This option may be used to pickup a previously interrupted recovery. By default, the recovery is started with the first inode existing.
 .TP
 \fB\-m\fR \fImagicfiles\fR
 Specify an alternate list of files and directories containing magic. This can be a single item, or a \fBcolon\fR-separated list. If a compiled magic file is found alongside a file or directory, it will be used instead. This option is passed to the \fBfile\fR utility in verbatim if specified.

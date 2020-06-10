@@ -65,7 +65,8 @@ SYNOPSIS
 
 **xfs\_undelete** \[ **-t** *timespec* \] \[ **-r** *filetypes* \] \[
 **-i** *filetypes* \] \[ **-z** *filetypes* \] \[ **-o**
-*output\_directory* \] \[ **-m** *magicfiles* \] *device*\
+*output\_directory* \] \[ **-s** *start\_inode* \] \[ **-m**
+*magicfiles* \] *device*\
 **xfs\_undelete -l** \[ **-m** *magicfiles* \]
 
 DESCRIPTION
@@ -152,6 +153,14 @@ OPTIONS
 
 :   Specify the directory the recovered files are copied to. By default
     this is *xfs\_undeleted* relative to the current directory.
+
+**-s** *start\_inode*
+
+:   Specify the inode number the recovery should be started at. This
+    must be an existing inode number in the source filesystem, as the
+    inode trees are traversed until this particular number is found.
+    This option may be used to pickup a previously interrupted recovery.
+    By default, the recovery is started with the first inode existing.
 
 **-m** *magicfiles*
 
