@@ -452,7 +452,7 @@ foreach line [split $result \n] {
 				puts stderr "Remount failed. Root privileges are required to run this command on this filesystem."
 				exit 32
 			}
-			{mount: * mount point is busy.} {
+			{mount: * is busy?} {
 				puts stderr "Remount failed. $err"
 				exit 32
 			}
