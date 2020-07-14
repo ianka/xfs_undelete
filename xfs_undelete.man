@@ -25,6 +25,8 @@ xfs_undelete \- an undelete tool for the XFS filesystem
 ] [
 .B \-m
 .I magicfiles
+] [
+.B \--no-remount-readonly
 ]
 .I device
 .br
@@ -64,7 +66,15 @@ Specify the inode number the recovery should be started at. This must be an exis
 \fB\-m\fR \fImagicfiles\fR
 Specify an alternate list of files and directories containing magic. This can be a single item, or a \fBcolon\fR-separated list. If a compiled magic file is found alongside a file or directory, it will be used instead. This option is passed to the \fBfile\fR utility in verbatim if specified.
 .TP
-\fB\-l\fR\fR
+\fB\--no-remount-readonly\fR
+This is a convenience option meant for the case you need to recover files from your root filesystem, which you cannot umount or remount read-only at the time you want to run \fIxfs_undelete\fR. The sane solution would be moving the harddisk with that particular file system to another computer where it isn't needed for operation.
+
+If you refuse to be that sane, you have to make sure the filesystem was umounted or remounted read-only at least in the meantime by another means, for example by doing a reboot. Otherwise you won't be able to recover recently deleted files.
+
+\fBUSE THIS OPTION AT YOUR OWN RISK.\fR
+As the source filesystem isn't remounted read-only when you specify this option, you may accidentally overwrite your source filesystem with the recovered files. \fIXfs_undelete\fR checks if you accidentally specified your output directory within the mount hierarchy of your source filesystem and refuses to do such nonsense. However, automatic checks may fail, so better check your specification of the output directory by hand. Twice. It \fBmust\fR reside on a different filesystem.
+.TP
+\fB\-l\fR
 Shows a list of filetypes suitable for use with the \fB-r\fR, \fB-i\fR, and \fB-z\fR options, along with common name as put by the \fBfile\fR utility.
 .SH FILETYPES
 The \fIfiletypes\fR as used with the \fB-r\fR, \fB-i\fR, and \fB-z\fR options are a \fBcomma\fR-separated list of patterns. Patterns of the form */* are matched against known mimetypes, all others are matched against known file extensions. The file extensions are guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion.
@@ -99,13 +109,13 @@ This recovers all files deleted not more than two hours ago, including "bin" fil
 This only recovers files matching any image/ mimetype plus those getting assigned an extension starting with gimp-.
 .ED
 .SH TROUBLESHOOTING
-When operating on devices, this program must be run as root, as it remounts the source filesystem read-only to put it into a consistent state. This remount may fail if the filesystem is busy e.g. because it's your \fI/home\fR or \fI/\fR filesystem and there are programs having files opened in read-write mode on it. Stop those programs e.g. by running \fIfuser -m /home\fR or ultimately, put your computer into single-user mode to have them stopped by init.
+When operating on devices, this program must be run as root, as it remounts the source filesystem read-only to put it into a consistent state. This remount may fail if the filesystem is busy e.g. because it's your \fI/home\fR or \fI/\fR filesystem and there are programs having files opened in read-write mode on it. Stop those programs e.g. by running \fIfuser -m /home\fR or ultimately, put your computer into single-user mode to have them stopped by init. If you need to recover files from your / filesystem, you may want to reboot, then use the \fB\--no-remount-readonly\fR option, but the sane option is to boot from a different root filesystem instead, for example by connecting the harddisk with the valueable deleted files to another computer.
 
-For the same reason, you need some space on another filesystem to put the recovered files onto. If your computer only has one huge xfs filesystem, you need to connect external storage.
+You also need some space on another filesystem to put the recovered files onto as they cannot be recovered in place. If your computer only has one huge xfs filesystem, you need to connect external storage.
 
-If the recovered files have no file extensions, or if the \fB\-r\fR and \fB\-i\fR options aren't functional, check with the \fB-l\fR option if the \fBfile\fR utility functions as intended. If the returned list is very short, the \fBfile\fR utility is most likely not installed or the magic files for the \fBfile\fR utility, often shipped extra in a package named \fIfile-magic\fR are missing, or they don't feature mimetypes.
+If the recovered files have no file extensions, or if the \fB\-r\fR, \fB\-i\fR, and \fB\-z\fR options aren't functional, check with the \fB-l\fR option if the \fBfile\fR utility functions as intended. If the returned list is very short, the \fBfile\fR utility is most likely not installed or the magic files for the \fBfile\fR utility, often shipped extra in a package named \fIfile-magic\fR are missing, or they don't feature mimetypes.
 .SH SEE ALSO
-\fBxfs\fR(5), \fBfuser\fR(1), \fBclock\fR(n)
+\fBxfs\fR(5), \fBfuser\fR(1), \fBclock\fR(n), \fBfile\fR(1),
 .SH AUTHORS
 Jan Kandziora <jjj@gmx.de>
 

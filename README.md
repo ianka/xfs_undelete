@@ -20,22 +20,22 @@ Then, it tries to make sense of the extents stored in the inode (which XFS does 
 
 ## Is it safe to use?
 Given it only ever *reads* from the filesystem it operates on, yes.
-It also remounts the filesystem read-only on startup so you don’t accidentally overwrite source data.
+It also remounts the filesystem read-only on startup by default so you don’t accidentally overwrite source data.
 However, I don’t offer any warranty or liability. **Use at your own risk.**
 
 ## Prerequisites
 *xfs_undelete* is a tiny Tcl script so it needs a Tcl interpreter.
 It makes use of some features of Tcl-8.6, so you need at least that version.
 The *tcllib* package is used for parsing the command line.
-It also needs a version of *dd* which supports the *bs=*, *skip=*, *seek=*, *count=*, *conv=notrunc*, and *status=none* options.
-That one from from GNU core utilities will do.
+It also needs a version of *dd* which supports the *bs=*, *skip=*, *seek=*, *count=*, *conv=notrunc*, and *status=none* options, as well as a *readlink* which supports the *-e* option, and a version of *stat* which supports the *-L* and *--format=%m* options.
+The ones from GNU core utilities will do.
 If the *file* utility and magic number files with MIME type support are installed (likely), *xfs_undelete* will use that to guess a file extension from the content of the recovered file. In short:
 
 - tcl >= 8.6
 - tcllib
 - GNU coreutils
 
-Optional:
+Recommended:
 
 - file (having magic number files with MIME type support)
 
@@ -55,6 +55,12 @@ terms of the attached GPLv3 license. See the file LICENSE for details.
 
 There's a manpage. Here is a copy of it:
 
+---
+date: March 2020
+section: 8
+title: xfs\_undelete
+---
+
 NAME
 ====
 
@@ -66,7 +72,7 @@ SYNOPSIS
 **xfs\_undelete** \[ **-t** *timespec* \] \[ **-r** *filetypes* \] \[
 **-i** *filetypes* \] \[ **-z** *filetypes* \] \[ **-o**
 *output\_directory* \] \[ **-s** *start\_inode* \] \[ **-m**
-*magicfiles* \] *device*\
+*magicfiles* \] \[ **\--no-remount-readonly** \] *device*\
 **xfs\_undelete -l** \[ **-m** *magicfiles* \]
 
 DESCRIPTION
@@ -112,42 +118,23 @@ OPTIONS
 **-r** *filetypes*
 
 :   Only recover files with a filetype matching a pattern from this
-    **comma**-separated list of patterns. Patterns of the form \*/\* are
-    matched against known mimetypes, all others are matched against
-    known file extensions. (The file extensions are guessed from the
-    file contents with the help of the **file** utility, so they don\'t
-    neccessarily are the same the file had before deletion.) See the
-    **-l** option for a list of valid file types. By default this
-    pattern is \*; all files are being recovered, but also see the
-    **-i** option. **Note:** you may want to quote the list to avoid the
-    shell doing the wildcard expansion.
+    **comma**-separated list of patterns. See section **FILETYPES**
+    below. By default this pattern is \* ; all files are being
+    recovered, but also see the **-i** option.
 
 **-i** *filetypes*
 
 :   Ignore files with a filetype matching a pattern from this
-    **comma**-separated list of patterns. Patterns of the form \*/\* are
-    matched against known mimetypes, all others are matched against
-    known file extensions. (The file extensions are guessed from the
-    file contents with the help of the **file** utility, so they don\'t
-    neccessarily are the same the file had before deletion.) See the
-    **-l** option for a list of valid file types. By default this list
-    is set to *bin*; all files of unknown type are being ignored, but
-    also see the **-r** option. **Note:** you may want to quote the list
-    to avoid the shell doing the wildcard expansion.
+    **comma**-separated list of patterns. See section **FILETYPES**
+    below. By default this list is set to *bin* ; all files of unknown
+    type are being ignored, but also see the **-r** option.
 
 **-z** *filetypes*
 
-:   Remove trailing zeroes from all files with a filetype matching a
-    pattern from this **comma**-separated list of patterns. Patterns of
-    the form \*/\* are matched against known mimetypes, all others are
-    matched against known file extensions. (The file extensions are
-    guessed from the file contents with the help of the **file**
-    utility, so they don\'t neccessarily are the same the file had
-    before deletion.) See the **-l** option for a list of valid file
-    types. By default this list is set to *text/\**; all files of
-    text/\* mimetype have their trailing zeroes removed. **Note:** you
-    may want to quote the list to avoid the shell doing the wildcard
-    expansion.
+:   Remove trailing zeroes from files with a filetype matching a pattern
+    from this **comma**-separated list of patterns. See section
+    **FILETYPES** below. By default this list is set to *text/\** ; all
+    files of text/\* mimetype have their trailing zeroes removed.
 
 **-o** *output\_directory*
 
@@ -170,11 +157,49 @@ OPTIONS
     be used instead. This option is passed to the **file** utility in
     verbatim if specified.
 
+**\--no-remount-readonly**
+
+:   This is a convenience option meant for the case you need to recover
+    files from your root filesystem, which you cannot umount or remount
+    read-only at the time you want to run *xfs\_undelete*. The sane
+    solution would be moving the harddisk with that particular file
+    system to another computer where it isn\'t needed for operation.
+
+If you refuse to be that sane, you have to make sure the filesystem was
+umounted or remounted read-only at least in the meantime by another
+means, for example by doing a reboot. Otherwise you won\'t be able to
+recover recently deleted files.
+
+**USE THIS OPTION AT YOUR OWN RISK.** As the source filesystem isn\'t
+remounted read-only when you specify this option, you may accidentally
+overwrite your source filesystem with the recovered files.
+*Xfs\_undelete* checks if you accidentally specified your output
+directory within the mount hierarchy of your source filesystem and
+refuses to do such nonsense. However, automatic checks may fail, so
+better check your specification of the output directory by hand. Twice.
+It **must** reside on a different filesystem.
+
 **-l**
 
 :   Shows a list of filetypes suitable for use with the **-r**, **-i**,
     and **-z** options, along with common name as put by the **file**
     utility.
+
+FILETYPES
+=========
+
+The *filetypes* as used with the **-r**, **-i**, and **-z** options are
+a **comma**-separated list of patterns. Patterns of the form \*/\* are
+matched against known mimetypes, all others are matched against known
+file extensions. The file extensions are guessed from the file contents
+with the help of the **file** utility, so they don\'t neccessarily are
+the same the file had before deletion.
+
+Start *xfs\_undeleted* with the **-l** option to get a list of valid
+file types.
+
+**Note:** you want to quote the list of filetypes to avoid the shell
+doing wildcard expansion.
 
 EXAMPLES
 ========
@@ -217,23 +242,28 @@ state. This remount may fail if the filesystem is busy e.g. because
 it\'s your */home* or */* filesystem and there are programs having files
 opened in read-write mode on it. Stop those programs e.g. by running
 *fuser -m /home* or ultimately, put your computer into single-user mode
-to have them stopped by init.
+to have them stopped by init. If you need to recover files from your /
+filesystem, you may want to reboot, then use the
+**\--no-remount-readonly** option, but the sane option is to boot from a
+different root filesystem instead, for example by connecting the
+harddisk with the valueable deleted files to another computer.
 
-For the same reason, you need some space on another filesystem to put
-the recovered files onto. If your computer only has one huge xfs
-filesystem, you need to connect external storage.
+You also need some space on another filesystem to put the recovered
+files onto as they cannot be recovered in place. If your computer only
+has one huge xfs filesystem, you need to connect external storage.
 
-If the recovered files have no file extensions, or if the **-r** and
-**-i** options aren\'t functional, check with the **-l** option if the
-**file** utility functions as intended. If the returned list is very
-short, the **file** utility is most likely not installed or the magic
-files for the **file** utility, often shipped extra in a package named
-*file-magic* are missing, or they don\'t feature mimetypes.
+If the recovered files have no file extensions, or if the **-r**,
+**-i**, and **-z** options aren\'t functional, check with the **-l**
+option if the **file** utility functions as intended. If the returned
+list is very short, the **file** utility is most likely not installed or
+the magic files for the **file** utility, often shipped extra in a
+package named *file-magic* are missing, or they don\'t feature
+mimetypes.
 
 SEE ALSO
 ========
 
-**xfs**(5), **fuser**(1), **clock**(n)
+**xfs**(5), **fuser**(1), **clock**(n), **file**(1),
 
 AUTHORS
 =======

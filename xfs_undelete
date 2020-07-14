@@ -82,6 +82,23 @@ proc readlink {symlink} {
 }
 
 
+## Mountpoint helper.
+proc mountpoint {dir} {
+	## Get the mountpoint of the output directory.
+	while {[catch {exec -- stat -L --format=%m $dir} result]} {
+		## Try again with the parent directory if the path does not exist.
+		set dir [file dirname $dir]
+	}
+
+	if {$result eq "?"} {
+		puts stderr "Your  stat  utility does not support the %m format option."
+		exit 32
+	}
+
+	return $result
+}
+
+
 ## DD helper.
 proc dd {args} {
 	upvar inode restartinode
@@ -319,6 +336,7 @@ if {[catch {set parameters [cmdline::getoptions argv {
 	{s.arg ""              "restart at inode number"}
 	{m.arg ""              "magic path passed to the 'file' utility"}
 	{l                     "list file extensions understood"}
+	{no-remount-readonly   "do not remount read-only before recovery"}
 } {[options] device -- options are:}]} result]} {
 	puts stderr $result
 	exit 127
@@ -436,45 +454,74 @@ foreach line [split $result \n] {
 	## Skip non-matching entries.
 	if {[readlink [lindex $line 0]] ne $fs} continue
 
+	## Ensure our output directory isn't on the same filesystem as the device node.
+	if {[mountpoint [dict get $::parameters o]] eq [lindex $line 2]} {
+		puts stderr "Your output directory is  [file normalize [dict get $::parameters o]]
+That is within the filesystem  [lindex $line 2]  you want to recover files
+from. This isn't feasible as it would overwrite the deleted files you wanted to
+recover. Please specify the option -o /path/to/output_directory on another (rw
+mounted) filesystem or run xfs_undelete from within a directory on that
+filesystem so the recovered files could be written there. They cannot be
+recovered in place."
+		exit 32
+	}
+
 	## Skip non-read-write filesystems.
 	if {"rw" ni [split [string trim [lindex $line 5] "()"] ,]} continue
 
-	## Log.
-	puts stderr "[lindex $argv 0] ($fs) is currently mounted read-write. Trying to remount read-only."
+	## Check if the remount step should be skipped.
+	if {[dict get $::parameters no-remount-readonly]} {
+		## Confirm.
+		puts -nonewline stderr "[lindex $argv 0] ($fs) is currently mounted read-write, but you
+specified the --no-remount-readonly option. This is a convenience option meant
+for the case you need to recover files from your root filesystem. You have to
+make sure the filesystem was umounted or remounted read-only by another means,
+for example a reboot. Otherwise you won't be able to recover recently deleted
+files.
 
-	## The rw option has been found. Try to remount read-only.
-	set lang $env(LANG)
-	set env(LANG) C
-	if {[catch {exec -- mount -oremount,ro [lindex $line 2]} err]} {
-		switch -glob -- $err {
-			{mount: only root can use "--options" option} {
-				## Fail if we cannot remount due to missing permissions.
-				puts stderr "Remount failed. Root privileges are required to run this command on this filesystem."
-				exit 32
-			}
-			{mount: * is busy?} {
-				puts stderr "Remount failed. $err"
-				exit 32
-			}
-			"* mount point not mounted or bad option." {
-				## Ignore this error.
-			}
-			default {
-				## Error during mount. Fail.
-				puts stderr $err
-				exit 32
+Type UNDERSTOOD if you have fully understood that: "
+		if {[gets stdin] ne "UNDERSTOOD"} {
+			## Log.
+			puts stderr "Operation cancelled."
+			exit 32
+		}
+	} else {
+		## Log.
+		puts stderr "[lindex $argv 0] ($fs) is currently mounted read-write. Trying to remount read-only."
+
+		## The rw option has been found. Try to remount read-only.
+		set lang $env(LANG)
+		set env(LANG) C
+		if {[catch {exec -- mount -oremount,ro [lindex $line 2]} err]} {
+			switch -glob -- $err {
+				{mount: only root can use "--options" option} {
+					## Fail if we cannot remount due to missing permissions.
+					puts stderr "Remount failed. Root privileges are required to run this command on this filesystem."
+					exit 32
+				}
+				{mount: * is busy?} {
+					puts stderr "Remount failed. $err"
+					exit 32
+				}
+				"* mount point not mounted or bad option." {
+					## Ignore this error.
+				}
+				default {
+					## Error during mount. Fail.
+					puts stderr $err
+					exit 32
+				}
 			}
 		}
-	}
-	set env(LANG) $lang
+		set env(LANG) $lang
 
-	## Sucess. Log.
-	puts stderr "Remount successful."
+		## Sucess. Log.
+		puts stderr "Remount successful."
+	}
 
 	## Ignore multiple mounts of the same filesystem as they all share the same read-only option.
 	break
 }
-
 
 ## Open filesystem image.
 if {[catch {open $fs r} fd]} {
