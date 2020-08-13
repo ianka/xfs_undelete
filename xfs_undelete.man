@@ -1,5 +1,5 @@
 '\" t
-.TH xfs_undelete 8 "March 2020" "" "System Manager's Manual"
+.TH xfs_undelete 8 "July 2020" "" "System Manager's Manual"
 .SH NAME
 xfs_undelete \- an undelete tool for the XFS filesystem
 .SH SYNOPSIS
@@ -115,7 +115,7 @@ You also need some space on another filesystem to put the recovered files onto a
 
 If the recovered files have no file extensions, or if the \fB\-r\fR, \fB\-i\fR, and \fB\-z\fR options aren't functional, check with the \fB-l\fR option if the \fBfile\fR utility functions as intended. If the returned list is very short, the \fBfile\fR utility is most likely not installed or the magic files for the \fBfile\fR utility, often shipped extra in a package named \fIfile-magic\fR are missing, or they don't feature mimetypes.
 .SH SEE ALSO
-\fBxfs\fR(5), \fBfuser\fR(1), \fBclock\fR(n), \fBfile\fR(1),
+\fBxfs\fR(5), \fBfuser\fR(1), \fBclock\fR(n), \fBfile\fR(1)
 .SH AUTHORS
 Jan Kandziora <jjj@gmx.de>
 
