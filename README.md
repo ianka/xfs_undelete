@@ -42,8 +42,8 @@ Recommended:
 In addition, you need enough space on another filesystem to store all the recovered files as they cannot be recovered in place.
 
 ## Distribution Packages
-[<img src="https://de.opensuse.org/images/1/10/Opensuse-geeko.png" alt="OpenSUSE Linux" width=100px>](https://software.opensuse.org/package/xfs_undelete)
-[<img src="https://www.archlinux.org/static/logos/archlinux-logo-dark-90dpi.ebdee92a15b3.png" alt="Arch Linux" width=100px>](https://aur.archlinux.org/packages/xfs_undelete/)
+[<img src="https://de.opensuse.org/images/1/10/Opensuse-geeko.png" alt="OpenSUSE Linux" height="100px">](https://software.opensuse.org/package/xfs_undelete)
+[<img src="https://www.archlinux.org/static/logos/archlinux-logo-dark-90dpi.ebdee92a15b3.png" alt="Arch Linux" height="100px">](https://aur.archlinux.org/packages/xfs_undelete/)
 
 ## Limitations
 - The way XFS deletes files makes it impossible to recover the filename or the path. You cannot undelete only certain files. The tool however has a mechanism only to recover files deleted since a certain date. See the -t option.
