@@ -42,6 +42,7 @@ Recommended:
 In addition, you need enough space on another filesystem to store all the recovered files as they cannot be recovered in place.
 
 ## Distribution Packages
+[<img src="https://de.opensuse.org/images/1/10/Opensuse-geeko.png" alt="OpenSUSE Linux" width=100px>](https://software.opensuse.org/package/xfs_undelete)
 [<img src="https://www.archlinux.org/static/logos/archlinux-logo-dark-90dpi.ebdee92a15b3.png" alt="Arch Linux" width=100px>](https://aur.archlinux.org/packages/xfs_undelete/)
 
 ## Limitations
@@ -58,30 +59,24 @@ terms of the attached GPLv3 license. See the file LICENSE for details.
 
 There's a manpage. Here is a copy of it:
 
----
-date: March 2020
-section: 8
-title: xfs\_undelete
----
-
 NAME
 ====
 
-xfs\_undelete - an undelete tool for the XFS filesystem
+xfs_undelete - an undelete tool for the XFS filesystem
 
 SYNOPSIS
 ========
 
-**xfs\_undelete** \[ **-t** *timespec* \] \[ **-r** *filetypes* \] \[
+**xfs_undelete** \[ **-t** *timespec* \] \[ **-r** *filetypes* \] \[
 **-i** *filetypes* \] \[ **-z** *filetypes* \] \[ **-o**
-*output\_directory* \] \[ **-s** *start\_inode* \] \[ **-m**
-*magicfiles* \] \[ **\--no-remount-readonly** \] *device*\
-**xfs\_undelete -l** \[ **-m** *magicfiles* \]
+*output_directory* \] \[ **-s** *start_inode* \] \[ **-m** *magicfiles*
+\] \[ **\--no-remount-readonly** \] *device*\
+**xfs_undelete -l** \[ **-m** *magicfiles* \]
 
 DESCRIPTION
 ===========
 
-**xfs\_undelete** tries to recover all files on an XFS filesystem marked
+**xfs_undelete** tries to recover all files on an XFS filesystem marked
 as deleted. The filesystem is specified using the *device* argument
 which should be the device name of the disk partition or volume
 containing the filesystem.
@@ -90,7 +85,7 @@ You may also specify a date or age since deletion, and file types to
 ignore or to recover exclusively.
 
 The recovered file cannot be undeleted in place and thus, it is stored
-on another filesystem in a subdirectory, by default *xfs\_undeleted*
+on another filesystem in a subdirectory, by default *xfs_undeleted*
 relative to the current directory. The filename cannot be recovered and
 thus, it is put as the time of deletion, the inode number, and a guessed
 file extension. You have to check the recovered files you are interested
@@ -139,12 +134,12 @@ OPTIONS
     **FILETYPES** below. By default this list is set to *text/\** ; all
     files of text/\* mimetype have their trailing zeroes removed.
 
-**-o** *output\_directory*
+**-o** *output_directory*
 
 :   Specify the directory the recovered files are copied to. By default
-    this is *xfs\_undeleted* relative to the current directory.
+    this is *xfs_undeleted* relative to the current directory.
 
-**-s** *start\_inode*
+**-s** *start_inode*
 
 :   Specify the inode number the recovery should be started at. This
     must be an existing inode number in the source filesystem, as the
@@ -164,7 +159,7 @@ OPTIONS
 
 :   This is a convenience option meant for the case you need to recover
     files from your root filesystem, which you cannot umount or remount
-    read-only at the time you want to run *xfs\_undelete*. The sane
+    read-only at the time you want to run *xfs_undelete*. The sane
     solution would be moving the harddisk with that particular file
     system to another computer where it isn\'t needed for operation.
 
@@ -176,7 +171,7 @@ recover recently deleted files.
 **USE THIS OPTION AT YOUR OWN RISK.** As the source filesystem isn\'t
 remounted read-only when you specify this option, you may accidentally
 overwrite your source filesystem with the recovered files.
-*Xfs\_undelete* checks if you accidentally specified your output
+*Xfs_undelete* checks if you accidentally specified your output
 directory within the mount hierarchy of your source filesystem and
 refuses to do such nonsense. However, automatic checks may fail, so
 better check your specification of the output directory by hand. Twice.
@@ -198,8 +193,8 @@ file extensions. The file extensions are guessed from the file contents
 with the help of the **file** utility, so they don\'t neccessarily are
 the same the file had before deletion.
 
-Start *xfs\_undeleted* with the **-l** option to get a list of valid
-file types.
+Start *xfs_undeleted* with the **-l** option to get a list of valid file
+types.
 
 **Note:** you want to quote the list of filetypes to avoid the shell
 doing wildcard expansion.
@@ -207,31 +202,31 @@ doing wildcard expansion.
 EXAMPLES
 ========
 
-\# cd \~ ; xfs\_undelete /dev/mapper/cr\_data
+\# cd \~ ; xfs_undelete /dev/mapper/cr_data
 
-This stores the recovered files from /dev/mapper/cr\_data in the
-directory \~/xfs\_undeleted.
+This stores the recovered files from /dev/mapper/cr_data in the
+directory \~/xfs_undeleted.
 
-\# xfs\_undelete -o /mnt/external\_harddisk /dev/sda3
+\# xfs_undelete -o /mnt/external_harddisk /dev/sda3
 
 This stores the recovered files from /dev/sda3 in the directory
-/mnt/external\_harddisk.
+/mnt/external_harddisk.
 
-\# xfs\_undelete -t 2020-03-19 /dev/sda3
+\# xfs_undelete -t 2020-03-19 /dev/sda3
 
 This ignores files deleted before March 19th, 2020.
 
-\# xfs\_undelete -t -1hour /dev/sda3
+\# xfs_undelete -t -1hour /dev/sda3
 
 This ignores files deleted more than one hour ago. The -t option accepts
 all dates understood by Tcl's \[clock scan\] command.
 
-\# xfs\_undelete -i \"\" -t -2hour /dev/sda3
+\# xfs_undelete -i \"\" -t -2hour /dev/sda3
 
 This recovers all files deleted not more than two hours ago, including
 \"bin\" files.
 
-\# xfs\_undelete -r \'image/\*,gimp-\*\' /dev/sda3
+\# xfs_undelete -r \'image/\*,gimp-\*\' /dev/sda3
 
 This only recovers files matching any image/ mimetype plus those getting
 assigned an extension starting with gimp-.
@@ -266,7 +261,7 @@ mimetypes.
 SEE ALSO
 ========
 
-**xfs**(5), **fuser**(1), **clock**(n), **file**(1),
+**xfs**(5), **fuser**(1), **clock**(n), **file**(1)
 
 AUTHORS
 =======
