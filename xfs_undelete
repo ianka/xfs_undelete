@@ -326,6 +326,13 @@ proc traverseInodeTree {ag block} {
 ## Main program.
 ##
 
+
+## Set LANG environment variable if not set.
+if {![info exists env(LANG)]} {
+	set env(LANG) C
+}
+
+
 ## Parse command line options.
 if {[catch {set parameters [cmdline::getoptions argv {
 	{t.arg ""              "deleted since"}
