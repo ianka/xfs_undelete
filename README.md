@@ -59,30 +59,24 @@ terms of the attached GPLv3 license. See the file LICENSE for details.
 
 There's a manpage. Here is a copy of it:
 
----
-date: November 2020
-section: 8
-title: xfs_undelete
----
-
 NAME
 ====
 
-xfs_undelete - an undelete tool for the XFS filesystem
+xfs\_undelete - an undelete tool for the XFS filesystem
 
 SYNOPSIS
 ========
 
-**xfs_undelete** \[ **-t** *timespec* \] \[ **-r** *filetypes* \] \[
+**xfs\_undelete** \[ **-t** *timespec* \] \[ **-r** *filetypes* \] \[
 **-i** *filetypes* \] \[ **-z** *filetypes* \] \[ **-o**
-*output_directory* \] \[ **-s** *start_inode* \] \[ **-m** *magicfiles*
-\] \[ **\--no-remount-readonly** \] *device*\
-**xfs_undelete -l** \[ **-m** *magicfiles* \]
+*output\_directory* \] \[ **-s** *start\_inode* \] \[ **-m**
+*magicfiles* \] \[ **--no-remount-readonly** \] *device*  
+**xfs\_undelete -l** \[ **-m** *magicfiles* \]
 
 DESCRIPTION
 ===========
 
-**xfs_undelete** tries to recover all files on an XFS filesystem marked
+**xfs\_undelete** tries to recover all files on an XFS filesystem marked
 as deleted. The filesystem is specified using the *device* argument
 which should be the device name of the disk partition or volume
 containing the filesystem.
@@ -91,7 +85,7 @@ You may also specify a date or age since deletion, and file types to
 ignore or to recover exclusively.
 
 The recovered file cannot be undeleted in place and thus, it is stored
-on another filesystem in a subdirectory, by default *xfs_undeleted*
+on another filesystem in a subdirectory, by default *xfs\_undeleted*
 relative to the current directory. The filename cannot be recovered and
 thus, it is put as the time of deletion, the inode number, and a guessed
 file extension. You have to check the recovered files you are interested
@@ -102,102 +96,90 @@ ignore those **\\0** characters but you may want to remove them by hand
 or automatically with the help of the **-z** option.
 
 This tool does some sanity checks on the files to be recovered. That is
-to avoid \"recovering\" bogus petabyte sized sparse files. In addition,
-it does not recover anything unidentifiable (given you have the file
-utility installed) by default. Specify **-i** *\"\"* on the command line
+to avoid "recovering" bogus petabyte sized sparse files. In addition, it
+does not recover anything unidentifiable (given you have the file
+utility installed) by default. Specify **-i** *""* on the command line
 if you want to recover those non-bogus but still unidentifiable files.
 
 OPTIONS
 =======
 
-**-t** *timespec*
+**-t** *timespec*  
+Only recover files up to a maximum age. The *timespec* value may be a
+date as *2020-03-19* for undeleting any file deleted since March 19th,
+2020, or *-2hour* for undeleting any file deleted since 2 hours before
+now. It accepts all values Tcl's \[clock scan\] function accepts. See
+**clock**(n). By default, deleted files of all ages are being recovered.
 
-:   Only recover files up to a maximum age. The *timespec* value may be
-    a date as *2020-03-19* for undeleting any file deleted since March
-    19th, 2020, or *-2hour* for undeleting any file deleted since 2
-    hours before now. It accepts all values Tcl\'s \[clock scan\]
-    function accepts. See **clock**(n). By default, deleted files of all
-    ages are being recovered.
+**-T** *timespec*  
+Only recover files modified later than a certain time. This option is
+useful if you know the date of your latest backup. The *timespec* value
+may be a date as *2020-03-19* for undeleting any file modified after
+March 19th, 2020, or *yesterday* for undeleting any file modified since
+yesterday. It accepts all values Tcl's \[clock scan\] function accepts.
+See **clock**(n). By default, deleted files of all ages are being
+recovered.
 
-**-T** *timespec*
+**-r** *filetypes*  
+Only recover files with a filetype matching a pattern from this
+**comma**-separated list of patterns. See section **FILETYPES** below.
+By default this pattern is \* ; all files are being recovered, but also
+see the **-i** option.
 
-:   Only recover files modified later than a certain time. This option
-    is useful if you know the date of your latest backup. The *timespec*
-    value may be a date as *2020-03-19* for undeleting any file modified
-    after March 19th, 2020, or *yesterday* for undeleting any file
-    modified since yesterday. It accepts all values Tcl\'s \[clock
-    scan\] function accepts. See **clock**(n). By default, deleted files
-    of all ages are being recovered.
+**-i** *filetypes*  
+Ignore files with a filetype matching a pattern from this
+**comma**-separated list of patterns. See section **FILETYPES** below.
+By default this list is set to *bin* ; all files of unknown type are
+being ignored, but also see the **-r** option.
 
-**-r** *filetypes*
+**-z** *filetypes*  
+Remove trailing zeroes from files with a filetype matching a pattern
+from this **comma**-separated list of patterns. See section
+**FILETYPES** below. By default this list is set to *text/\** ; all
+files of text/\* mimetype have their trailing zeroes removed.
 
-:   Only recover files with a filetype matching a pattern from this
-    **comma**-separated list of patterns. See section **FILETYPES**
-    below. By default this pattern is \* ; all files are being
-    recovered, but also see the **-i** option.
+**-o** *output\_directory*  
+Specify the directory the recovered files are copied to. By default this
+is *xfs\_undeleted* relative to the current directory.
 
-**-i** *filetypes*
+**-s** *start\_inode*  
+Specify the inode number the recovery should be started at. This must be
+an existing inode number in the source filesystem, as the inode trees
+are traversed until this particular number is found. This option may be
+used to pickup a previously interrupted recovery. By default, the
+recovery is started with the first inode existing.
 
-:   Ignore files with a filetype matching a pattern from this
-    **comma**-separated list of patterns. See section **FILETYPES**
-    below. By default this list is set to *bin* ; all files of unknown
-    type are being ignored, but also see the **-r** option.
+**-m** *magicfiles*  
+Specify an alternate list of files and directories containing magic.
+This can be a single item, or a **colon**-separated list. If a compiled
+magic file is found alongside a file or directory, it will be used
+instead. This option is passed to the **file** utility in verbatim if
+specified.
 
-**-z** *filetypes*
-
-:   Remove trailing zeroes from files with a filetype matching a pattern
-    from this **comma**-separated list of patterns. See section
-    **FILETYPES** below. By default this list is set to *text/\** ; all
-    files of text/\* mimetype have their trailing zeroes removed.
-
-**-o** *output_directory*
-
-:   Specify the directory the recovered files are copied to. By default
-    this is *xfs_undeleted* relative to the current directory.
-
-**-s** *start_inode*
-
-:   Specify the inode number the recovery should be started at. This
-    must be an existing inode number in the source filesystem, as the
-    inode trees are traversed until this particular number is found.
-    This option may be used to pickup a previously interrupted recovery.
-    By default, the recovery is started with the first inode existing.
-
-**-m** *magicfiles*
-
-:   Specify an alternate list of files and directories containing magic.
-    This can be a single item, or a **colon**-separated list. If a
-    compiled magic file is found alongside a file or directory, it will
-    be used instead. This option is passed to the **file** utility in
-    verbatim if specified.
-
-**\--no-remount-readonly**
-
-:   This is a convenience option meant for the case you need to recover
-    files from your root filesystem, which you cannot umount or remount
-    read-only at the time you want to run *xfs_undelete*. The sane
-    solution would be moving the harddisk with that particular file
-    system to another computer where it isn\'t needed for operation.
+**--no-remount-readonly**  
+This is a convenience option meant for the case you need to recover
+files from your root filesystem, which you cannot umount or remount
+read-only at the time you want to run *xfs\_undelete*. The sane solution
+would be moving the harddisk with that particular file system to another
+computer where it isn't needed for operation.
 
 If you refuse to be that sane, you have to make sure the filesystem was
 umounted or remounted read-only at least in the meantime by another
-means, for example by doing a reboot. Otherwise you won\'t be able to
+means, for example by doing a reboot. Otherwise you won't be able to
 recover recently deleted files.
 
-**USE THIS OPTION AT YOUR OWN RISK.** As the source filesystem isn\'t
+**USE THIS OPTION AT YOUR OWN RISK.** As the source filesystem isn't
 remounted read-only when you specify this option, you may accidentally
 overwrite your source filesystem with the recovered files.
-*Xfs_undelete* checks if you accidentally specified your output
+*Xfs\_undelete* checks if you accidentally specified your output
 directory within the mount hierarchy of your source filesystem and
 refuses to do such nonsense. However, automatic checks may fail, so
 better check your specification of the output directory by hand. Twice.
 It **must** reside on a different filesystem.
 
-**-l**
-
-:   Shows a list of filetypes suitable for use with the **-r**, **-i**,
-    and **-z** options, along with common name as put by the **file**
-    utility.
+**-l**  
+Shows a list of filetypes suitable for use with the **-r**, **-i**, and
+**-z** options, along with common name as put by the **file** utility.
 
 FILETYPES
 =========
@@ -206,11 +188,11 @@ The *filetypes* as used with the **-r**, **-i**, and **-z** options are
 a **comma**-separated list of patterns. Patterns of the form \*/\* are
 matched against known mimetypes, all others are matched against known
 file extensions. The file extensions are guessed from the file contents
-with the help of the **file** utility, so they don\'t neccessarily are
+with the help of the **file** utility, so they don't neccessarily are
 the same the file had before deletion.
 
-Start *xfs_undeleted* with the **-l** option to get a list of valid file
-types.
+Start *xfs\_undeleted* with the **-l** option to get a list of valid
+file types.
 
 **Note:** you want to quote the list of filetypes to avoid the shell
 doing wildcard expansion.
@@ -218,31 +200,31 @@ doing wildcard expansion.
 EXAMPLES
 ========
 
-\# cd \~ ; xfs_undelete /dev/mapper/cr_data
+\# cd ~ ; xfs\_undelete /dev/mapper/cr\_data
 
-This stores the recovered files from /dev/mapper/cr_data in the
-directory \~/xfs_undeleted.
+This stores the recovered files from /dev/mapper/cr\_data in the
+directory ~/xfs\_undeleted.
 
-\# xfs_undelete -o /mnt/external_harddisk /dev/sda3
+\# xfs\_undelete -o /mnt/external\_harddisk /dev/sda3
 
 This stores the recovered files from /dev/sda3 in the directory
-/mnt/external_harddisk.
+/mnt/external\_harddisk.
 
-\# xfs_undelete -t 2020-03-19 /dev/sda3
+\# xfs\_undelete -t 2020-03-19 /dev/sda3
 
 This ignores files deleted before March 19th, 2020.
 
-\# xfs_undelete -t -1hour /dev/sda3
+\# xfs\_undelete -t -1hour /dev/sda3
 
 This ignores files deleted more than one hour ago. The -t option accepts
-all dates understood by Tcl's \[clock scan\] command.
+all dates understood by Tcl’s \[clock scan\] command.
 
-\# xfs_undelete -i \"\" -t -2hour /dev/sda3
+\# xfs\_undelete -i "" -t -2hour /dev/sda3
 
 This recovers all files deleted not more than two hours ago, including
-\"bin\" files.
+"bin" files.
 
-\# xfs_undelete -r \'image/\*,gimp-\*\' /dev/sda3
+\# xfs\_undelete -r 'image/\*,gimp-\*' /dev/sda3
 
 This only recovers files matching any image/ mimetype plus those getting
 assigned an extension starting with gimp-.
@@ -252,13 +234,13 @@ TROUBLESHOOTING
 
 When operating on devices, this program must be run as root, as it
 remounts the source filesystem read-only to put it into a consistent
-state. This remount may fail if the filesystem is busy e.g. because
-it\'s your */home* or */* filesystem and there are programs having files
+state. This remount may fail if the filesystem is busy e.g. because it's
+your */home* or */* filesystem and there are programs having files
 opened in read-write mode on it. Stop those programs e.g. by running
 *fuser -m /home* or ultimately, put your computer into single-user mode
 to have them stopped by init. If you need to recover files from your /
 filesystem, you may want to reboot, then use the
-**\--no-remount-readonly** option, but the sane option is to boot from a
+**--no-remount-readonly** option, but the sane option is to boot from a
 different root filesystem instead, for example by connecting the
 harddisk with the valueable deleted files to another computer.
 
@@ -267,12 +249,11 @@ files onto as they cannot be recovered in place. If your computer only
 has one huge xfs filesystem, you need to connect external storage.
 
 If the recovered files have no file extensions, or if the **-r**,
-**-i**, and **-z** options aren\'t functional, check with the **-l**
+**-i**, and **-z** options aren't functional, check with the **-l**
 option if the **file** utility functions as intended. If the returned
 list is very short, the **file** utility is most likely not installed or
 the magic files for the **file** utility, often shipped extra in a
-package named *file-magic* are missing, or they don\'t feature
-mimetypes.
+package named *file-magic* are missing, or they don't feature mimetypes.
 
 SEE ALSO
 ========
@@ -282,4 +263,4 @@ SEE ALSO
 AUTHORS
 =======
 
-Jan Kandziora \<jjj\@gmx.de\>
+Jan Kandziora &lt;jjj@gmx.de&gt;
