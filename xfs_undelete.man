@@ -1,5 +1,5 @@
 '\" t
-.TH xfs_undelete 8 "July 2020" "" "System Manager's Manual"
+.TH xfs_undelete 8 "November 2020" "" "System Manager's Manual"
 .SH NAME
 xfs_undelete \- an undelete tool for the XFS filesystem
 .SH SYNOPSIS
@@ -47,6 +47,9 @@ This tool does some sanity checks on the files to be recovered. That is to avoid
 .TP
 \fB\-t\fR \fItimespec\fR
 Only recover files up to a maximum age. The \fItimespec\fR value may be a date as \fI2020-03-19\fR for undeleting any file deleted since March 19th, 2020, or \fI-2hour\fR for undeleting any file deleted since 2 hours before now. It accepts all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, deleted files of all ages are being recovered.
+.TP
+\fB\-T\fR \fItimespec\fR
+Only recover files modified later than a certain time. This option is useful if you know the date of your latest backup. The \fItimespec\fR value may be a date as \fI2020-03-19\fR for undeleting any file modified after March 19th, 2020, or \fIyesterday\fR for undeleting any file modified since yesterday. It accepts all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, deleted files of all ages are being recovered.
 .TP
 \fB\-r\fR \fIfiletypes\fR
 Only recover files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. See section \fBFILETYPES\fR below. By default this pattern is * ; all files are being recovered, but also see the \fB-i\fR option.

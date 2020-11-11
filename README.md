@@ -46,7 +46,7 @@ In addition, you need enough space on another filesystem to store all the recove
 [<img src="https://www.archlinux.org/static/logos/archlinux-logo-dark-90dpi.ebdee92a15b3.png" alt="Arch Linux" height="100px">](https://aur.archlinux.org/packages/xfs_undelete/)
 
 ## Limitations
-- The way XFS deletes files makes it impossible to recover the filename or the path. You cannot undelete only certain files. The tool however has a mechanism only to recover files deleted since a certain date. See the -t option.
+- The way XFS deletes files makes it impossible to recover the filename or the path. You cannot undelete only certain files. The tool however has a mechanism only to recover files deleted or modified since a certain date. See the -t and -T options.
 - The way XFS deletes files makes it impossible to recover heavily fragmented files. For typical 512 byte inodes, you can only recover files having at maximum 21 extents (of arbitrary size). Files with more extents cannot be recovered at all by this program.
 - The way XFS deletes files makes it impossible to retrieve the correct file size. Most files will be padded with zeroes so they fit the XFS block size. Most programs do not bother anyway. Files of the text/ mimetypes get their trailing zeroes trimmed by default after recovery. See the -z option to change this behaviour.
 
@@ -58,6 +58,12 @@ terms of the attached GPLv3 license. See the file LICENSE for details.
 ## How to use it
 
 There's a manpage. Here is a copy of it:
+
+---
+date: November 2020
+section: 8
+title: xfs_undelete
+---
 
 NAME
 ====
@@ -112,6 +118,16 @@ OPTIONS
     hours before now. It accepts all values Tcl\'s \[clock scan\]
     function accepts. See **clock**(n). By default, deleted files of all
     ages are being recovered.
+
+**-T** *timespec*
+
+:   Only recover files modified later than a certain time. This option
+    is useful if you know the date of your latest backup. The *timespec*
+    value may be a date as *2020-03-19* for undeleting any file modified
+    after March 19th, 2020, or *yesterday* for undeleting any file
+    modified since yesterday. It accepts all values Tcl\'s \[clock
+    scan\] function accepts. See **clock**(n). By default, deleted files
+    of all ages are being recovered.
 
 **-r** *filetypes*
 

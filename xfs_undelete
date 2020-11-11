@@ -163,11 +163,15 @@ proc investigateInodeBlock {ag block} {
 		## Skip if not the magic string of an unused/deleted inode.
 		if {[string range $data $boffset $boffset+7] ne "IN\0\0\3\2\0\0"} continue
 
-		## Get ctime.
+		## Get ctime and mtime.
 		binary scan [string range $data $boffset+48 $boffset+51] Iu ctime
+		binary scan [string range $data $boffset+40 $boffset+43] Iu mtime
 
 		## Ignore files deleted before the specified time.
 		if {$ctime<$::mctime} continue
+
+		## Ignore files last modified before the specified time.
+		if {$mtime<$::mmtime} continue
 
 		## Get output filename.
 		set of [file join [dict get $::parameters o] [format "%s_%s" [clock format $ctime -format "%Y-%m-%d-%H-%M"] $inode]]
@@ -336,6 +340,7 @@ if {![info exists env(LANG)]} {
 ## Parse command line options.
 if {[catch {set parameters [cmdline::getoptions argv {
 	{t.arg ""              "deleted since"}
+	{T.arg ""              "modified since"}
 	{r.arg "*"             "list of file extensions and mimetypes to recover"}
 	{i.arg "bin"           "list of file extensions and mimetypes to ignore"}
 	{z.arg "text/*"        "list of file extensions and mimetypes to remove all trailing zeroes from"}
@@ -432,6 +437,15 @@ if {[dict get $::parameters t] ne {}} {
 	set mctime 0
 }
 
+## Get the minimum mtime to consider.
+if {[dict get $::parameters T] ne {}} {
+	if {[catch {clock scan [dict get $::parameters T]} mmtime]} {
+		puts stderr "Unable to parse timespec. Please put it in a way Tcl's \[clock scan\] can understand, e.g. -2hours."
+		exit 32
+	}
+} else {
+	set mmtime 0
+}
 
 ## Get filesystem to scan from command line.
 if {[lindex $argv 0] eq {} || [set fs [readlink [lindex $argv 0]]] eq {}} {
