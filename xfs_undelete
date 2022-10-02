@@ -161,7 +161,7 @@ proc investigateInodeBlock {ag block} {
 		if {!$::passedstart} continue
 
 		## Skip if not the magic string of an unused/deleted inode.
-		if {[string range $data $boffset $boffset+7] ne "IN\0\0\3\2\0\0"} continue
+		if {[string range $data $boffset $boffset+3] ne "IN\0\0"} continue
 
 		## Get ctime and mtime.
 		binary scan [string range $data $boffset+48 $boffset+51] Iu ctime

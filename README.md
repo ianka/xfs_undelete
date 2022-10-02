@@ -15,7 +15,7 @@ The filename cannot be recovered and thus, it is put as the time of deletion, th
 You have to check the recovered files you are interested in by hand and rename them properly.
 
 ## How does it work?
-*xfs_undelete* traverses the inode B+trees of each allocation group, and checks the filesystem blocks holding inodes for the magic string *IN\0\0\3\2\0\0* that indicates a deleted inode.
+*xfs_undelete* traverses the inode B+trees of each allocation group, and checks the filesystem blocks holding inodes for the magic string *IN\0\0* that indicates a deleted inode.
 Then, it tries to make sense of the extents stored in the inode (which XFS does not delete) and collect the data blocks of the file.
 
 ## Is it safe to use?
