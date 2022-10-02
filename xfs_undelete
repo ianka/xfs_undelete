@@ -167,11 +167,11 @@ proc investigateInodeBlock {ag block} {
 		binary scan [string range $data $boffset+48 $boffset+51] Iu ctime
 		binary scan [string range $data $boffset+40 $boffset+43] Iu mtime
 
-		## Ignore files deleted before the specified time.
-		if {$ctime<$::mctime} continue
+		## Ignore files deleted outside of the given time range.
+		if {$ctime<[lindex $::ctimes 0] || $ctime>[lindex $::ctimes 1]} continue
 
-		## Ignore files last modified before the specified time.
-		if {$mtime<$::mmtime} continue
+		## Ignore files last modified outside of the given time range.
+		if {$mtime<[lindex $::mtimes 0] || $mtime>[lindex $::mtimes 1]} continue
 
 		## Get output filename.
 		set of [file join [dict get $::parameters o] [format "%s_%s" [clock format $ctime -format "%Y-%m-%d-%H-%M"] $inode]]
@@ -326,6 +326,29 @@ proc traverseInodeTree {ag block} {
 }
 
 
+## Parse a time range.
+proc parseTimerange {timerange} {
+	## Parse the different kinds of valid incomplete ranges.
+	switch -regexp -matchvar match -- $timerange {
+		{^$}             {set times [list "epoch" "now"]}
+		{^\.\.$}         {set times [list "epoch" "now"]}
+		{^\.\.(.+)$}     {set times [list "epoch" [lindex $match 1]]}
+		{^(.+)\.\.$}     {set times [list [lindex $match 1] "now"]}
+		{^(.+)\.\.(.+)$} {set times [lrange $match 1 2]}
+		default          {set times [list $timerange "now"]}
+	}
+
+	## Convert symbolic times into seconds since epoch and return those values.
+	lmap t $times {
+		if {[catch {clock scan $t} t]} {
+			puts stderr "Unable to parse time range. Please put it as a range of time specs Tcl's \[clock scan\] can understand, e.g. 2022-06-04..-2hours. A single value as -2hours is considered the same as a range -2hours..now."
+			exit 32
+		}
+		set t
+	}
+}
+
+
 ##
 ## Main program.
 ##
@@ -426,26 +449,11 @@ if {[dict get $::parameters l]} {
 	exit 0
 }
 
+## Get the ctimes to consider.
+set ctimes [parseTimerange [dict get $::parameters t]]
 
-## Get the minimum ctime to consider.
-if {[dict get $::parameters t] ne {}} {
-	if {[catch {clock scan [dict get $::parameters t]} mctime]} {
-		puts stderr "Unable to parse timespec. Please put it in a way Tcl's \[clock scan\] can understand, e.g. -2hours."
-		exit 32
-	}
-} else {
-	set mctime 0
-}
-
-## Get the minimum mtime to consider.
-if {[dict get $::parameters T] ne {}} {
-	if {[catch {clock scan [dict get $::parameters T]} mmtime]} {
-		puts stderr "Unable to parse timespec. Please put it in a way Tcl's \[clock scan\] can understand, e.g. -2hours."
-		exit 32
-	}
-} else {
-	set mmtime 0
-}
+## Get the mtimes to consider.
+set mtimes [parseTimerange [dict get $::parameters T]]
 
 ## Get filesystem to scan from command line.
 if {[lindex $argv 0] eq {} || [set fs [readlink [lindex $argv 0]]] eq {}} {

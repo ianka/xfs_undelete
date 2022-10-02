@@ -6,7 +6,10 @@ xfs_undelete \- an undelete tool for the XFS filesystem
 .B xfs_undelete
 [
 .B \-t
-.I timespec
+.I timerange
+] [
+.B \-T
+.I timerange
 ] [
 .B \-r
 .I filetypes
@@ -45,11 +48,13 @@ The recovered file cannot be undeleted in place and thus, it is stored on anothe
 This tool does some sanity checks on the files to be recovered. That is to avoid "recovering" bogus petabyte sized sparse files. In addition, it does not recover anything unidentifiable (given you have the file utility installed) by default. Specify \fB-i\fR \fI""\fR on the command line if you want to recover those non-bogus but still unidentifiable files.
 .SH OPTIONS
 .TP
-\fB\-t\fR \fItimespec\fR
-Only recover files up to a maximum age. The \fItimespec\fR value may be a date as \fI2020-03-19\fR for undeleting any file deleted since March 19th, 2020, or \fI-2hour\fR for undeleting any file deleted since 2 hours before now. It accepts all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, deleted files of all ages are being recovered.
+\fB\-t\fR \fItimerange\fR
+Only recover files that have been deleted within the given time range. The \fItimerange\fR value has to be put either as two timespecs separated by a doubledot e.g. \fI2020-03-19..-2hours\fR, as a doubledot followed by a timespec as e.g. \fI..-2hours\fR, which means a range starting at epoch, as a timespec followed by a doubledot as e.g. \fI-2hours..\fR, which means a range ending now, or as a single timespec value. The latter means the same as a timespec followed by a double dot. Timespecs may be all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, files deleted from epoch to now are being recovered.
 .TP
-\fB\-T\fR \fItimespec\fR
-Only recover files modified later than a certain time. This option is useful if you know the date of your latest backup. The \fItimespec\fR value may be a date as \fI2020-03-19\fR for undeleting any file modified after March 19th, 2020, or \fIyesterday\fR for undeleting any file modified since yesterday. It accepts all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, deleted files of all ages are being recovered.
+\fB\-T\fR \fItimerange\fR
+Only recover files that have been modified within the given time range before they have been deleted.
+This option is useful if you know the date of your latest backup.
+The \fItimerange\fR value has to be put either as two timespecs separated by a doubledot e.g. \fI2020-03-19..-2hours\fR, as a doubledot followed by a timespec as e.g. \fI..-2hours\fR, which means a range starting at epoch, as a timespec followed by a doubledot as e.g. \fI-2hours..\fR, which means a range ending now, or as a single timespec value. The latter means the same as a timespec followed by a double dot. Timespecs may be all values Tcl's [clock scan] function accepts. See \fBclock\fR(n). By default, files modified from epoch to now are being recovered.
 .TP
 \fB\-r\fR \fIfiletypes\fR
 Only recover files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. See section \fBFILETYPES\fR below. By default this pattern is * ; all files are being recovered, but also see the \fB-i\fR option.

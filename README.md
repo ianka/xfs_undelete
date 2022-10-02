@@ -59,22 +59,19 @@ terms of the attached GPLv3 license. See the file LICENSE for details.
 
 There's a manpage. Here is a copy of it:
 
-NAME
-====
+# NAME
 
 xfs\_undelete - an undelete tool for the XFS filesystem
 
-SYNOPSIS
-========
+# SYNOPSIS
 
-**xfs\_undelete** \[ **-t** *timespec* \] \[ **-r** *filetypes* \] \[
-**-i** *filetypes* \] \[ **-z** *filetypes* \] \[ **-o**
-*output\_directory* \] \[ **-s** *start\_inode* \] \[ **-m**
+**xfs\_undelete** \[ **-t** *timerange* \] \[ **-T** *timerange* \] \[
+**-r** *filetypes* \] \[ **-i** *filetypes* \] \[ **-z** *filetypes* \]
+\[ **-o** *output\_directory* \] \[ **-s** *start\_inode* \] \[ **-m**
 *magicfiles* \] \[ **--no-remount-readonly** \] *device*  
 **xfs\_undelete -l** \[ **-m** *magicfiles* \]
 
-DESCRIPTION
-===========
+# DESCRIPTION
 
 **xfs\_undelete** tries to recover all files on an XFS filesystem marked
 as deleted. The filesystem is specified using the *device* argument
@@ -90,9 +87,9 @@ relative to the current directory. The filename cannot be recovered and
 thus, it is put as the time of deletion, the inode number, and a guessed
 file extension. You have to check the recovered files you are interested
 in by hand and rename them properly. Also, the file length cannot be
-recovered and thus, the recovered files are padded with **\\0**
+recovered and thus, the recovered files are padded with **\0**
 characters up to the next xfs block size boundary. Most programs simply
-ignore those **\\0** characters but you may want to remove them by hand
+ignore those **\0** characters but you may want to remove them by hand
 or automatically with the help of the **-z** option.
 
 This tool does some sanity checks on the files to be recovered. That is
@@ -101,23 +98,30 @@ does not recover anything unidentifiable (given you have the file
 utility installed) by default. Specify **-i** *""* on the command line
 if you want to recover those non-bogus but still unidentifiable files.
 
-OPTIONS
-=======
+# OPTIONS
 
-**-t** *timespec*  
-Only recover files up to a maximum age. The *timespec* value may be a
-date as *2020-03-19* for undeleting any file deleted since March 19th,
-2020, or *-2hour* for undeleting any file deleted since 2 hours before
-now. It accepts all values Tcl's \[clock scan\] function accepts. See
-**clock**(n). By default, deleted files of all ages are being recovered.
+**-t** *timerange*  
+Only recover files that have been deleted within the given time range.
+The *timerange* value has to be put either as two timespecs separated by
+a doubledot e.g. *2020-03-19..-2hours*, as a doubledot followed by a
+timespec as e.g. *..-2hours*, which means a range starting at epoch, as
+a timespec followed by a doubledot as e.g. *-2hours..*, which means a
+range ending now, or as a single timespec value. The latter means the
+same as a timespec followed by a double dot. Timespecs may be all values
+Tcl's \[clock scan\] function accepts. See **clock**(n). By default,
+files deleted from epoch to now are being recovered.
 
-**-T** *timespec*  
-Only recover files modified later than a certain time. This option is
-useful if you know the date of your latest backup. The *timespec* value
-may be a date as *2020-03-19* for undeleting any file modified after
-March 19th, 2020, or *yesterday* for undeleting any file modified since
-yesterday. It accepts all values Tcl's \[clock scan\] function accepts.
-See **clock**(n). By default, deleted files of all ages are being
+**-T** *timerange*  
+Only recover files that have been modified within the given time range
+before they have been deleted. This option is useful if you know the
+date of your latest backup. The *timerange* value has to be put either
+as two timespecs separated by a doubledot e.g. *2020-03-19..-2hours*, as
+a doubledot followed by a timespec as e.g. *..-2hours*, which means a
+range starting at epoch, as a timespec followed by a doubledot as e.g.
+*-2hours..*, which means a range ending now, or as a single timespec
+value. The latter means the same as a timespec followed by a double dot.
+Timespecs may be all values Tcl's \[clock scan\] function accepts. See
+**clock**(n). By default, files modified from epoch to now are being
 recovered.
 
 **-r** *filetypes*  
@@ -181,8 +185,7 @@ It **must** reside on a different filesystem.
 Shows a list of filetypes suitable for use with the **-r**, **-i**, and
 **-z** options, along with common name as put by the **file** utility.
 
-FILETYPES
-=========
+# FILETYPES
 
 The *filetypes* as used with the **-r**, **-i**, and **-z** options are
 a **comma**-separated list of patterns. Patterns of the form \*/\* are
@@ -197,8 +200,7 @@ file types.
 **Note:** you want to quote the list of filetypes to avoid the shell
 doing wildcard expansion.
 
-EXAMPLES
-========
+# EXAMPLES
 
 \# cd ~ ; xfs\_undelete /dev/mapper/cr\_data
 
@@ -229,8 +231,7 @@ This recovers all files deleted not more than two hours ago, including
 This only recovers files matching any image/ mimetype plus those getting
 assigned an extension starting with gimp-.
 
-TROUBLESHOOTING
-===============
+# TROUBLESHOOTING
 
 When operating on devices, this program must be run as root, as it
 remounts the source filesystem read-only to put it into a consistent
@@ -255,12 +256,10 @@ list is very short, the **file** utility is most likely not installed or
 the magic files for the **file** utility, often shipped extra in a
 package named *file-magic* are missing, or they don't feature mimetypes.
 
-SEE ALSO
-========
+# SEE ALSO
 
 **xfs**(5), **fuser**(1), **clock**(n), **file**(1)
 
-AUTHORS
-=======
+# AUTHORS
 
 Jan Kandziora &lt;jjj@gmx.de&gt;
