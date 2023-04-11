@@ -25,6 +25,13 @@ set filetypes {
 set sectsize 512
 
 
+## Set UTC timezone if the timezone cannot be detected.
+if {[catch {clock scan "now"}]} {
+		set env(TZ) ":UTC"
+		puts stderr "Timezone cannot be detected. Defaulting to UTC."
+}
+
+
 ##
 ## Functions.
 ##
