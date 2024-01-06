@@ -182,6 +182,9 @@ proc investigateInodeBlock {ag block} {
 		## Skip if we haven't passed the start inode yet.
 		if {!$::passedstart} continue
 
+		## Skip if this inode is in the list of inodes to ignore.
+		if {$inode in [split [dict get $::parameters x] ,]} continue
+
 		## Skip if not the magic string of an unused/deleted inode.
 		if {[string range $data $boffset $boffset+3] ne "IN\0\0"} continue
 
@@ -391,6 +394,7 @@ if {[catch {set parameters [cmdline::getoptions argv {
 	{z.arg "text/*"        "list of file extensions and mimetypes to remove all trailing zeroes from"}
 	{o.arg "xfs_undeleted" "target directory for recovered files"}
 	{s.arg ""              "restart at inode number"}
+	{x.arg ""              "list of inode numbers to ignore"}
 	{m.arg ""              "magic path passed to the 'file' utility"}
 	{l                     "list file extensions understood"}
 	{no-remount-readonly   "do not remount read-only before recovery"}

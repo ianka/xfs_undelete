@@ -136,6 +136,10 @@ Ignore files with a filetype matching a pattern from this
 By default this list is set to *bin* ; all files of unknown type are
 being ignored, but also see the **-r** option.
 
+**-x** *inodes*  
+Ignore files with an inode number from this **comma**-separated list. By
+default this list is empty.
+
 **-z** *filetypes*  
 Remove trailing zeroes from files with a filetype matching a pattern
 from this **comma**-separated list of patterns. See section

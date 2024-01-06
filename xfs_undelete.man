@@ -62,6 +62,9 @@ Only recover files with a filetype matching a pattern from this \fBcomma\fR-sepa
 \fB\-i\fR \fIfiletypes\fR
 Ignore files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. See section \fBFILETYPES\fR below. By default this list is set to \fIbin\fR ; all files of unknown type are being ignored, but also see the \fB-r\fR option.
 .TP
+\fB\-x\fR \fIinodes\fR
+Ignore files with an inode number from this \fBcomma\fR-separated list. By default this list is empty.
+.TP
 \fB\-z\fR \fIfiletypes\fR
 Remove trailing zeroes from files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. See section \fBFILETYPES\fR below. By default this list is set to \fItext/*\fR ; all files of text/* mimetype have their trailing zeroes removed.
 .TP
