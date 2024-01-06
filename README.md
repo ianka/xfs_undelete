@@ -140,6 +140,11 @@ being ignored, but also see the **-r** option.
 Ignore files with an inode number from this **comma**-separated list. By
 default this list is empty.
 
+**-S** *size*  
+Ignore files with a size larger than specified. The number may be given
+as bytes or with an appended k, M, G as kilobytes, megabytes, gigabytes
+respectively. By default there is no size limit.
+
 **-z** *filetypes*  
 Remove trailing zeroes from files with a filetype matching a pattern
 from this **comma**-separated list of patterns. See section

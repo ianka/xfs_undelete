@@ -65,6 +65,9 @@ Ignore files with a filetype matching a pattern from this \fBcomma\fR-separated 
 \fB\-x\fR \fIinodes\fR
 Ignore files with an inode number from this \fBcomma\fR-separated list. By default this list is empty.
 .TP
+\fB\-S\fR \fIsize\fR
+Ignore files with a size larger than specified. The number may be given as bytes or with an appended k, M, G as kilobytes, megabytes, gigabytes respectively. By default there is no size limit.
+.TP
 \fB\-z\fR \fIfiletypes\fR
 Remove trailing zeroes from files with a filetype matching a pattern from this \fBcomma\fR-separated list of patterns. See section \fBFILETYPES\fR below. By default this list is set to \fItext/*\fR ; all files of text/* mimetype have their trailing zeroes removed.
 .TP

@@ -239,6 +239,14 @@ proc investigateInodeBlock {ag block} {
 		## Ignore all files without any extent starting at loffset zero. These are most likely bogus.
 		if {![dict exist $extents 0]} continue
 
+		## Calculate the file size from the extents recovered.
+		set filesize [::tcl::mathfunc::max {*}[lmap {loffset extent} $extents {
+			expr {$::blocksize*($loffset+[dict get $extent count])}
+		}]]
+
+		## Ignore all files larger than the limit.
+		if {$::maxsize ne {} && $filesize>$::maxsize} continue
+
 		## Recover first block of loffset zero extent for file type reconstruction. Ignore file if dd reported a problem.
 		dd if=$::fs of=$of bs=$::blocksize skip=[dict get $extents 0 skip] seek=0 count=1 conv=notrunc status=none
 
@@ -394,6 +402,7 @@ if {[catch {set parameters [cmdline::getoptions argv {
 	{z.arg "text/*"        "list of file extensions and mimetypes to remove all trailing zeroes from"}
 	{o.arg "xfs_undeleted" "target directory for recovered files"}
 	{s.arg ""              "restart at inode number"}
+	{S.arg ""              "ignore all files larger than this limit"}
 	{x.arg ""              "list of inode numbers to ignore"}
 	{m.arg ""              "magic path passed to the 'file' utility"}
 	{l                     "list file extensions understood"}
@@ -480,6 +489,26 @@ set ctimes [parseTimerange [dict get $::parameters t]]
 
 ## Get the mtimes to consider.
 set mtimes [parseTimerange [dict get $::parameters T]]
+
+## Set maximum file size to consider.
+set maxsize [dict get $::parameters S]
+if {$maxsize ne {}} {
+	switch -- [string index $maxsize end] {
+		k       {set multiplier [expr {10**3}]}
+		M       {set multiplier [expr {10**6}]}
+		G       {set multiplier [expr {10**9}]}
+		default {set multiplier 1}
+	}
+	if {[string index $maxsize end] in {k M G}} {
+		set maxsize [string range $maxsize 0 end-1]
+	}
+	if {![string is integer $maxsize]} {
+		## Not a valid file size
+		puts stderr "Please specify a valid maximum file size."
+		exit 32
+	}
+	set maxsize [expr {$multiplier*$maxsize}]
+}
 
 ## Get filesystem to scan from command line.
 if {[lindex $argv 0] eq {} || [set fs [readlink [lindex $argv 0]]] eq {}} {
