@@ -31,7 +31,7 @@ It also needs a version of *dd* which supports the *bs=*, *skip=*, *seek=*, *cou
 The ones from GNU core utilities will do.
 If the *file* utility and magic number files with MIME type support are installed (likely), *xfs_undelete* will use that to guess a file extension from the content of the recovered file. In short:
 
-- tcl >= 8.6
+- tcl >= 8.5
 - tcllib
 - GNU coreutils
 
