@@ -39,10 +39,10 @@ if {[catch {clock scan "now"}]} {
 ## Define our own private lmap if it's not supplied by Tcl.
 if {[catch {lmap var {} {}}]} {
 	proc lmap {_var list body} {
-    	upvar 1 $_var var
-	    set res {}
-    	foreach var $list {lappend res [uplevel 1 $body]}
-	    set res
+		upvar 1 $_var var
+		set res {}
+		foreach var $list {lappend res [uplevel 1 $body]}
+		set res
 	}
 }
 
