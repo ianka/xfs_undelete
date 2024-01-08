@@ -25,7 +25,7 @@ However, I don’t offer any warranty or liability. **Use at your own risk.**
 
 ## Prerequisites
 *xfs_undelete* is a tiny Tcl script so it needs a Tcl interpreter.
-It makes use of some features of Tcl-8.6, so you need at least that version.
+It makes use of some features of Tcl-8.5, so you need at least that version.
 The *tcllib* package is used for parsing the command line.
 It also needs a version of *dd* which supports the *bs=*, *skip=*, *seek=*, *count=*, *conv=notrunc*, and *status=none* options, as well as a *readlink* which supports the *-e* option, and a version of *stat* which supports the *-L* and *--format=%m* options.
 The ones from GNU core utilities will do.
