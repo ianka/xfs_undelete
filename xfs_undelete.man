@@ -17,6 +17,12 @@ xfs_undelete \- an undelete tool for the XFS filesystem
 .B \-i
 .I filetypes
 ] [
+.B \-x
+.I inodes
+] [
+.B \-S
+.I size
+] [
 .B \-z
 .I filetypes
 ] [

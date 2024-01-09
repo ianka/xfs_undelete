@@ -66,9 +66,10 @@ xfs\_undelete - an undelete tool for the XFS filesystem
 # SYNOPSIS
 
 **xfs\_undelete** \[ **-t** *timerange* \] \[ **-T** *timerange* \] \[
-**-r** *filetypes* \] \[ **-i** *filetypes* \] \[ **-z** *filetypes* \]
-\[ **-o** *output\_directory* \] \[ **-s** *start\_inode* \] \[ **-m**
-*magicfiles* \] \[ **--no-remount-readonly** \] *device*  
+**-r** *filetypes* \] \[ **-i** *filetypes* \] \[ **-x** *inodes* \] \[
+**-S** *size* \] \[ **-z** *filetypes* \] \[ **-o** *output\_directory*
+\] \[ **-s** *start\_inode* \] \[ **-m** *magicfiles* \] \[
+**--no-remount-readonly** \] *device*  
 **xfs\_undelete -l** \[ **-m** *magicfiles* \]
 
 # DESCRIPTION
