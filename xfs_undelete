@@ -244,8 +244,8 @@ proc investigateInodeBlock {ag block} {
 		if {![dict exist $extents 0]} continue
 
 		## Calculate the file size from the extents recovered.
-		set filesize [::tcl::mathfunc::max {*}[lmap {loffset extent} $extents {
-			expr {$::blocksize*($loffset+[dict get $extent count])}
+		set filesize [::tcl::mathfunc::max {*}[lmap {loffset inf} $extents {
+			expr {$::blocksize*($loffset+[dict get $inf count])}
 		}]]
 
 		## Ignore all files larger than the limit.
