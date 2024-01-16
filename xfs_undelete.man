@@ -99,7 +99,7 @@ Shows a list of filetypes suitable for use with the \fB-r\fR, \fB-i\fR, and \fB-
 .SH FILETYPES
 The \fIfiletypes\fR as used with the \fB-r\fR, \fB-i\fR, and \fB-z\fR options are a \fBcomma\fR-separated list of patterns. Patterns of the form */* are matched against known mimetypes, all others are matched against known file extensions. The file extensions are guessed from the file contents with the help of the \fBfile\fR utility, so they don't neccessarily are the same the file had before deletion.
 
-Start \fIxfs_undeleted\fR with the \fB-l\fR option to get a list of valid file types.
+Start \fIxfs_undelete\fR with the \fB-l\fR option to get a list of valid file types.
 
 \fBNote:\fR you want to quote the list of filetypes to avoid the shell doing wildcard expansion.
 .SH EXAMPLES
