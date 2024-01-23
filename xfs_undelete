@@ -50,6 +50,46 @@ if {[catch {lmap var {} {}}]} {
 	}
 }
 
+## Define our own private lsort -stride if it's not supplied by Tcl.
+if {[catch {lsort -stride 2 {{} {}}}]} {
+	rename lsort _lsort
+	proc lsort {args} {
+		## Isolate the value of the stride option, if any.
+		set unsortedlist [lindex $args end]
+		set options {}
+		set stride 0
+		foreach option [lrange $args 0 end-1] {
+			if {$stride eq {}} {
+				set stride $option
+			} elseif {$option eq {-stride}} {
+				set stride {}
+			} else {
+				lappend options $option
+			}
+		}
+
+		## Check the new -stride option.
+		if {$stride<2} {
+			## No stride option. Sort list as given.
+			_lsort {*}$options $unsortedlist
+		} else {
+			## Stride option. Rearrange the list into groups of -stride size.
+			set groupedlist {}
+			set group {}
+			foreach element $unsortedlist {
+				lappend group $element
+				if {[llength $group]==$stride} {
+					lappend groupedlist $group
+					set group {}
+				}
+			}
+
+			## Sort the groups, then flatten the result.
+			concat {*}[_lsort {*}$options $groupedlist]
+		}
+	}
+}
+
 
 ##
 ## Functions.
