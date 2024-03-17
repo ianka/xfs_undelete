@@ -211,8 +211,16 @@ proc investigateInodeBlock {ag block} {
 		## Skip if not the magic string of an inode.
 		if {[string range $data $boffset $boffset+1] ne "IN"} continue
 
+		binary scan [string range $data $boffset+4 $boffset+4] cu inode_version
+
 		## Found. Get inode number.
-		binary scan [string range $data $boffset+152 $boffset+159] Wu inode
+		if {$inode_version >= 3} {
+		    binary scan [string range $data $boffset+152 $boffset+159] Wu inode
+		    set inode_ext_offset 176
+		} else {
+		    set inode [expr {$::blocksize*$dblock} + $boffset]
+		    set inode_ext_offset 100
+		}
 
 		## Log each visited inode.
 		puts -nonewline stderr [format [expr {$::passedstart?$::cmformat:$::skformat}] $inode [expr {100*$::ichecked/double($::icount)}]]
@@ -247,7 +255,7 @@ proc investigateInodeBlock {ag block} {
 
 		## Make a dict of any extents found.
 		set extents [dict create]
-		for {set ioffset 176} {$ioffset<$::inodesize} {incr ioffset 16} {
+		for {set ioffset $inode_ext_offset} {$ioffset+15<$::inodesize} {incr ioffset 16} {
 			## Get extent.
 			set extent [string range $data $boffset+$ioffset [expr {$boffset+$ioffset+15}]]
 
