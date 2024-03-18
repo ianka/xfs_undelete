@@ -218,7 +218,7 @@ proc investigateInodeBlock {ag block} {
 		    binary scan [string range $data $boffset+152 $boffset+159] Wu inode
 		    set inode_ext_offset 176
 		} else {
-		    set inode [expr {$::blocksize*$dblock} + $boffset]
+		    set inode [expr {($::blocksize*$dblock + $boffset) / $::inodesize}]
 		    set inode_ext_offset 100
 		}
 
