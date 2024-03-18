@@ -208,18 +208,25 @@ proc investigateInodeBlock {ag block} {
 
 	## Run through all potential inodes in a block.
 	for {set boffset 0} {$boffset<$::blocksize} {incr boffset $::inodesize} {
-		## Skip if not the magic string of an inode.
+		## Skip if not the magic string of an inode record.
 		if {[string range $data $boffset $boffset+1] ne "IN"} continue
 
-		binary scan [string range $data $boffset+4 $boffset+4] cu inode_version
+		## Found. Get inode version.
+		binary scan [string index $data $boffset+4] cu inode_version
 
-		## Found. Get inode number.
-		if {$inode_version >= 3} {
-		    binary scan [string range $data $boffset+152 $boffset+159] Wu inode
-		    set inode_ext_offset 176
+		## Get inode number and extent offset.
+		if {$inode_version>=3} {
+			## Inode versions >=3 have their inode number stored in the inode block.
+			binary scan [string range $data $boffset+152 $boffset+159] Wu inode
+
+			## Extent records start from position 176 within the inode record.
+			set inode_extent_offset 176
 		} else {
-		    set inode [expr {($::blocksize*$dblock + $boffset) / $::inodesize}]
-		    set inode_ext_offset 100
+			## Inode versions <3 have their inode number calculated from their position within the filesystem image.
+			set inode [expr {($::blocksize*$dblock+$boffset)/$::inodesize}]
+
+			## Extent records start from position 100 within the inode record.
+			set inode_extent_offset 100
 		}
 
 		## Log each visited inode.
@@ -255,7 +262,7 @@ proc investigateInodeBlock {ag block} {
 
 		## Make a dict of any extents found.
 		set extents [dict create]
-		for {set ioffset $inode_ext_offset} {$ioffset+15<$::inodesize} {incr ioffset 16} {
+		for {set ioffset $inode_extent_offset} {$ioffset+15<$::inodesize} {incr ioffset 16} {
 			## Get extent.
 			set extent [string range $data $boffset+$ioffset [expr {$boffset+$ioffset+15}]]
 
