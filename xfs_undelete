@@ -248,8 +248,19 @@ proc investigateInodeBlock {ag block} {
 		if {[string range $data $boffset $boffset+3] ne "IN\0\0"} continue
 
 		## Get ctime and mtime.
-		binary scan [string range $data $boffset+48 $boffset+51] Iu ctime
-		binary scan [string range $data $boffset+40 $boffset+43] Iu mtime
+		if {$::bigtime} {
+			## Big timestamps.
+			binary scan [string range $data $boffset+48 $boffset+55] Wu bigctime
+			binary scan [string range $data $boffset+40 $boffset+47] Wu bigmtime
+
+			## Calculate legacy ctime and mtime from big timestamps.
+			set ctime [expr {$bigctime/10**9-2**31}]
+			set mtime [expr {$bigmtime/10**9-2**31}]
+		} else {
+			## Legacy timestamps. Use the seconds value directly.
+			binary scan [string range $data $boffset+48 $boffset+51] Iu ctime
+			binary scan [string range $data $boffset+40 $boffset+43] Iu mtime
+		}
 
 		## Ignore files deleted outside of the given time range.
 		if {$ctime<[lindex $::ctimes 0] || $ctime>[lindex $::ctimes 1]} continue
@@ -699,11 +710,20 @@ binary scan [string range $data   4   7] Iu blocksize
 binary scan [string range $data   8  15] Wu dblocks
 binary scan [string range $data  84  87] Iu agblocks
 binary scan [string range $data  88  91] Iu agcount
+binary scan [string range $data 100 101] Su versionnum
 binary scan [string range $data 102 103] Su sectsize
 binary scan [string range $data 104 105] Su inodesize
 binary scan [string range $data 106 107] Su inopblock
 binary scan [string index $data     124] cu agblklog
 binary scan [string range $data 128 136] Wu icount
+
+## Check extra features of XFS version 5.
+if {[string index [format "%04x" $versionnum] 3] eq "5"} {
+	binary scan [string range $data 216 219] Iu featuresincompat
+	set bigtime [expr {$featuresincompat&0x08?true:false}]
+} else {
+	set bigtime false
+}
 
 ## Set message formats.
 set skformat "Skipping  inode %[string length $dblocks]d (%3.0f%%)\r"
